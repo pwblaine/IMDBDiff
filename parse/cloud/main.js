@@ -108,6 +108,8 @@ Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
                                                 movies.push(aMovie);
                                            }
                                            
+                                           if (movies)
+                                           
                                            response.success("searchForMoviesWithTitle succeeded with output : |" + querystring.stringify(movies) + "| for request: " + request.body);
                                            
                                            } else {
