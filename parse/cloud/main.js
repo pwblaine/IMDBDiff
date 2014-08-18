@@ -1,3 +1,5 @@
+var _ = require("underscore.js");
+
 /*
  *  @name Parse.Cloud.run('request',data,options)
  *  data will be logged back to the user if a success
@@ -33,30 +35,45 @@ Parse.Cloud.define('request', function(request, response) {
 
 Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
                    
-                   if (true) {
+                   if (false) {
                    
-                   response.success('success');
+                   response.success("searchForMoviesWithTitle succeeded for request: "+request.body);
                    
                    } else {
                    
-                   response.error('unable to access the request data');
+                   response.error("searchForMoviesWithTitle failed for request: "+request.body);
                    
                    }
                    
                    });
 
 Parse.Cloud.job("runSearch", function(request, status) {
-                
-                if (Parse.Cloud.run('searchForMoviesWithTitle',request.params))
-                
-                {
-                
-                status.success("searchForMoviesWithTitle ran");
-                
-                } else {
-                
-                success.error("couldn't run the method");
-                
-                }
+                // call the cloud function searchForMoviesWithTitle passing on the request data
+                Parse.Cloud.run('searchForMoviesWithTitle',request).then(
+                                              // if the result is success...
+                                              function(response){
+                                              // the response must be turned to a string as the success method returns the object passed as the argument
+                                              status.success(response.toString());
+                                              
+                                              },
+                                                                         // if the cloud function fails...
+                                                                         function(error){
+                                                                         
+                                                                         // the response is wrapped in an Parse.Error so the string for the console log must be extracted using the message property
+                                                                         var message = error.code.toString() + " : " + error.message;
+                                                                         
+                                                                         if (error.code == Parse.Error.VALIDATION_ERROR)
+                                                                         {
+                                                                            message += " == Parse.Error.VALIDATION_ERROR";
+                                                                         }
+                                                                            else if (error.code == Parse.Error.SCRIPT_FAILED)
+                                                                         {
+                                                                            message += " == Parse.Error.SCRIPT_FAILED";
+                                                                            //
+                                                                         }
+                                                                         
+                                                                         status.error(message);
+                                                                         
+                                                                         });
                 
                 });
