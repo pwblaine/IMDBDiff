@@ -100,7 +100,8 @@ Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
                                            movies = eval('('+movieAPIRequest.text+')');
                                            
                                            var index = 0;
-                                           for (var aMovie) in movies
+                                           
+                                           for (var aMovie in movies)
                                            {
                                                 var Movie = Parse.Object.extend("Movie"); // class declaration
                                                 aMovie = new Movie(aMovie);
