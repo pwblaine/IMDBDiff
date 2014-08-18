@@ -1,0 +1,20 @@
+{
+    "applications": {
+        "MovieDiff": {
+            "applicationId": "zYCvujPGuXn4heQxVlohQk1Mc9QHhsooUO1NleYb", 
+            "masterKey": "uMD5l9CMxCVpZLoueKLV0fOonFzCVq8f9P2T6u6v"
+        }, 
+        "_default": {
+            "link": "MovieDiff"
+        },
+	"dev" : {
+	    "link": "MovieDiff"
+	},
+	"live" : {
+	    "link": "MovieDiff"
+	}
+    }, 
+    "global": {
+        "parseVersion": "1.2.19"
+    }
+}
