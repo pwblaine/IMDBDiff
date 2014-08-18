@@ -32,3 +32,7 @@ Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
      response.error('unable to access the request data');
   }
 });
+
+Parse.Cloud.job("runSearch", function(request, status) {
+                status.success(Parse.Cloud.searchForMoviesWithTitle("title"));
+                });
