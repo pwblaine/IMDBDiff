@@ -35,7 +35,7 @@ Parse.Cloud.define('request', function(request, response) {
  *  @result on a success a under the key 'Search' : JSON array of movie objects is returned, otherwise an error
  */
 
-Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
+Parse.Cloud.define('getMovieByImdbId', function(request, response) {
                    // IMDb ID to Search
                    var imdbId = "tt1285016";
                    
@@ -70,9 +70,9 @@ Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
                    
                    });
 
-Parse.Cloud.job("runSearch", function(request, status) {
+Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
                 // call the cloud function searchForMoviesWithTitle passing on the request data
-                Parse.Cloud.run('searchForMoviesWithTitle',request).then(
+                Parse.Cloud.run('runGetMovieByImdbId',request).then(
                                               // if the result is success...
                                               function(response){
                                               // the response must be turned to a string as the success method returns the object passed as the argument
