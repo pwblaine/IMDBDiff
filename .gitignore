@@ -1,3 +1,9 @@
+#credentials
+global.json
+
+#removing sensitive data
+Rakefile
+
 # Xcode
 */build/*
 *.pbxuser
