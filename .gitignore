@@ -1,3 +1,6 @@
+#credentials
+global.json
+
 # Xcode
 */build/*
 *.pbxuser
