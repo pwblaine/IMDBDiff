@@ -33,9 +33,9 @@ Parse.Cloud.define('request', function(request, response) {
 
 Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
                    
-                   if (request) {
+                   if (true) {
                    
-                   response.success(request.params);
+                   response.success('success');
                    
                    } else {
                    
@@ -47,6 +47,16 @@ Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
 
 Parse.Cloud.job("runSearch", function(request, status) {
                 
-                status.success(Parse.Cloud.run('searchForMoviesWithTitle',request.params));
+                if (Parse.Cloud.run('searchForMoviesWithTitle',request.params))
+                
+                {
+                
+                status.success("searchForMoviesWithTitle ran");
+                
+                } else {
+                
+                success.error("couldn't run the method");
+                
+                }
                 
                 });
