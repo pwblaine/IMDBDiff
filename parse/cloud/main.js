@@ -1,4 +1,6 @@
 var _ = require("underscore.js");
+var Buffer = require('buffer').Buffer; // required for httpRequest
+var querystring = require('querystring'); // stringifys json
 
 /*
  *  @name Parse.Cloud.run('request',data,options)
@@ -34,16 +36,37 @@ Parse.Cloud.define('request', function(request, response) {
  */
 
 Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
+                   // IMDb ID to Search
+                   var imdbId = "tt1285016";
                    
-                   if (false) {
+                   /* Send Request
+                   var http = new ActiveXObject("Microsoft.XMLHTTP");
+                   http.open("GET", "http://www.omdbapi.com/?i=" + imdbId, false);
+                   http.send(null);
                    
-                   response.success("searchForMoviesWithTitle succeeded for request: "+request.body);
+                   // Response to JSON
+                   var omdbData = http.responseText;
+                   var omdbJSON = eval("(" + omdbData + ")");
+                   
+                   // Returns Movie Title
+                   alert(omdbJSON.Title);
+                   
+                    */
+                   Parse.Cloud.httpRequest({
+                                           method: 'GET',
+                                           url: "http://www.omdbapi.com/?i="+imdbId+"&t=",
+                                           success: function(movieAPIRequest) {
+                   
+                   if (movieAPIRequest) {
+                                                                                                 var Movie = Parse.Object.extend("Movie");
+                                                                                                 pObj = new Movie(eval('('+movieAPIRequest.text+')'));
+                   response.success("searchForMoviesWithTitle succeeded with output : |" + pObj.get("Title") + "| for request: "+request.body);
                    
                    } else {
                    
                    response.error("searchForMoviesWithTitle failed for request: "+request.body);
                    
-                   }
+                                           }}})
                    
                    });
 
