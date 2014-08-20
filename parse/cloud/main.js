@@ -41,11 +41,15 @@ Parse.Cloud.define('getMovieByImdbId', function(request, response) {
                    Parse.Cloud.httpRequest({
                                            method: 'GET',
                                            url: "http://www.omdbapi.com/?i="+imdbId+"&t=",
+                                           headers: {
+                                           'Accept': 'application/json',
+                                           'User-Agent': 'Parse.com Cloud Code',
+                                           'Content-Type': 'application/json'},
                                            success: function(movieAPIRequest) {
                    
                    if (movieAPIRequest) {
                                                                                                  var Movie = Parse.Object.extend("Movie");
-                                                                                                 pObj = new Movie(eval('('+movieAPIRequest.text+')'));
+                                                                                                 pObj = new Movie(movieAPIRequest.body));
                    response.success("getMovieByImdbId succeeded with output : |" + pObj.get("Title") + "| for request: "+request.body);
                    
                    } else {
@@ -88,42 +92,49 @@ Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
                 });
 
 Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
-                   // imdbId to get
-
                    //Execute an http request (get, post [for creating and updating], delete)
-                   var context = "requestMaking";
+                   var state = "requestMaking";
+                   var successOrFailureTemplate = function(outcome,output) {if (outcome == successOutcome) {return "succeeded with output: " + output} else if (outcome == errorOutcome) {return "failed with error: | code: "+output.code+" | message: "+output.message}};
+                   var logTemplateWithOutcomeAndOutput = function(outcome,output) {return "searchForMoviesWithTitle " + successOrFailureTemplate(outcome,output) + " | in state: "+state+" | for request: " + request.body;}
+                   
+                   var const successOutcome = "success";
+                   var const errorOutcome = "error";
+                   
+                   
                    var movieTitle = "The Matrix"; // = request.params.movieTitle;
+                   
                    Parse.Cloud.httpRequest({
                                            method: 'GET',
                                            url: "http://www.omdbapi.com/?s="+movieTitle+"&y=",
+                                           headers: {
+                                           'Accept': 'application/json',
+                                           'User-Agent': 'Parse.com Cloud Code',
+                                           'Content-Type': 'application/json'},
                                            success: function(movieAPIRequest) {
                                            
                                             var movies = [];
-                                            movies = eval('('+movieAPIRequest.text+')');
+                                            movies = movieAPIRequest.body;
                                            
                                             var index = 0;
                                            
-                                            context = "requestParsing";
+                                            state = "requestParsing";
                                             for (var aMovie in movies)
                                             {
                                               var Movie = Parse.Object.extend("Movie"); // class declaration
                                               aMovie = new Movie(aMovie);
                                               movies.push(aMovie);
                                             }
-                                            
-
-                                            if (movies) //If the array was created successfully 
+                                           
+                                            if (movies) //If the array was created successfully
                                             {
-                                              context= "successResponse";
-                                              response.success("searchForMoviesWithTitle succeeded with output : |" + querystring.stringify(movies) + "| for request: " + request.body);
-                                            }, 
+                                              response.success(logTemplateWithOutcomeAndOutput(successOutcome,movies.toString()));
+                                            }
+                   },
 
-                                           error(error): {
-                                              context = "errorResponse";
-                                           response.error("searchForMoviesWithTitle failed for request: "+request.body);
+                                           error: function(arrayFindError) {
+                                              response.error(logTemplateWithOutcomeAndOutput(errorOutcome,arrayFindError));
                                            
                                            }});
-                   
                    });
 
 Parse.Cloud.job('runSearchForMoviesWithTitle', function(request, status) {
