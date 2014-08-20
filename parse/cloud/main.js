@@ -57,7 +57,7 @@ Parse.Cloud.define('getMovieByImdbId', function(request, response) {
                    });
 
 Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
-                // call the cloud function searchForMoviesWithTitle passing on the request data
+                // call the cloud function getMovieByImdbId passing on the request data
                 Parse.Cloud.run('getMovieByImdbId',request).then(
                                               // if the result is success...
                                               function(response){
