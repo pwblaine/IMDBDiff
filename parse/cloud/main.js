@@ -11,19 +11,19 @@ var querystring = require('querystring'); // stringifys json
  *  @description 'request' is just a simple test method to see if interacting with Cloud Code works
  */
 
-Parse.Cloud.define('request', function(request, response) {
-                   
-                   if (request) {
-                   
-                   response.success(request);
-                   
-                   } else {
-                   
-                   response.error('unable to access the request data');
-                   
-                   }
-                   
-                   });
+ Parse.Cloud.define('request', function(request, response) {
+
+   if (request) {
+
+     response.success(request);
+
+   } else {
+
+     response.error('unable to access the request data');
+
+   }
+
+ });
 
 /*
  *  @name Parse.Cloud.run('search',data,options)
@@ -35,8 +35,8 @@ Parse.Cloud.define('request', function(request, response) {
  *  @result on a success a under the key 'Search' : JSON array of movie objects is returned, otherwise an error
  */
 
-Parse.Cloud.define('getMovieByImdbId', function(request, response) 
-{
+ Parse.Cloud.define('getMovieByImdbId', function(request, response) 
+ {
 // imdbId to get
     var imdbId = "tt1285016"; // = request.params.imdbId
 
@@ -48,17 +48,17 @@ Parse.Cloud.define('getMovieByImdbId', function(request, response)
         'User-Agent': 'Parse.com Cloud Code',
         'Content-Type': 'application/json'},
         success: function(movieAPIRequest) {
-            if (movieAPIRequest) {
-              var Movie = Parse.Object.extend("Movie");
-              pObj = new Movie(movieAPIRequest.body);
-              response.success("getMovieByImdbId succeeded with output : |" + pObj.get("Title") + "| for request: "+request.body);
-            } else {
-              response.error("getMovieByImdbId failed for request: "+request.body);  
+          if (movieAPIRequest) {
+            var Movie = Parse.Object.extend("Movie");
+            pObj = new Movie(movieAPIRequest.body);
+            response.success("getMovieByImdbId succeeded with output : |" + pObj.get("Title") + "| for request: "+request.body);
+          } else {
+            response.error("getMovieByImdbId failed for request: "+request.body);  
 
-    }}});                  
-});
+          }}});                  
+  });
 
-Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
+ Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
                 // call the cloud function getMovieByImdbId passing on the request data
                 Parse.Cloud.run('getMovieByImdbId',request).then(
                                               // if the result is success...
@@ -66,28 +66,28 @@ Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
                                               // the response must be turned to a string as the success method returns the object passed as the argument
                                               status.success(response.toString());
                                               
-                                              },
+                                            },
                                                                          // if the cloud function fails...
                                                                          function(error){
-                                                                         
+
                                                                          // the response is wrapped in an Parse.Error so the string for the console log must be extracted using the message property
                                                                          var message = error.code.toString() + " : " + error.message;
                                                                          
                                                                          if (error.code == Parse.Error.VALIDATION_ERROR)
                                                                          {
-                                                                            message += " == Parse.Error.VALIDATION_ERROR";
-                                                                         }
-                                                                            else if (error.code == Parse.Error.SCRIPT_FAILED)
-                                                                         {
-                                                                            message += " == Parse.Error.SCRIPT_FAILED";
+                                                                          message += " == Parse.Error.VALIDATION_ERROR";
+                                                                        }
+                                                                        else if (error.code == Parse.Error.SCRIPT_FAILED)
+                                                                        {
+                                                                          message += " == Parse.Error.SCRIPT_FAILED";
                                                                             //
-                                                                         }
-                                                                         
-                                                                         status.error(message);
-                                                                         
-                                                                         });
-                
-                });
+                                                                          }
+
+                                                                          status.error(message);
+
+                                                                        });
+
+});
 
 Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
                    //Execute an http request (get, post [for creating and updating], delete)
@@ -102,38 +102,38 @@ Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
                    var movieTitle = "The Matrix"; // = request.params.movieTitle;
                    
                    Parse.Cloud.httpRequest({
-                                           method: 'GET',
-                                           url: "http://www.omdbapi.com/?s="+movieTitle+"&y=",
-                                           headers: {
-                                           'Accept': 'application/json',
-                                           'User-Agent': 'Parse.com Cloud Code',
-                                           'Content-Type': 'application/json'},
-                                           success: function(movieAPIRequest) {
-                                           
-                                            var movies = [];
-                                            movies = movieAPIRequest.body;
-                                           
-                                            var index = 0;
-                                           
-                                            state = "requestParsing";
-                                            for (var aMovie in movies)
-                                            {
+                     method: 'GET',
+                     url: "http://www.omdbapi.com/?s="+movieTitle+"&y=",
+                     headers: {
+                       'Accept': 'application/json',
+                       'User-Agent': 'Parse.com Cloud Code',
+                       'Content-Type': 'application/json'},
+                       success: function(movieAPIRequest) {
+
+                        var movies = [];
+                        movies = movieAPIRequest.body;
+
+                        var index = 0;
+
+                        state = "requestParsing";
+                        for (var aMovie in movies)
+                        {
                                               var Movie = Parse.Object.extend("Movie"); // class declaration
                                               aMovie = new Movie(aMovie);
                                               movies.push(aMovie);
                                             }
-                                           
+
                                             if (movies) //If the array was created successfully
                                             {
                                               response.success(logTemplateWithOutcomeAndOutput(successOutcome,movies.toString()));
                                             }
-                   },
+                                          },
 
-                                           error: function(arrayFindError) {
-                                              response.error(logTemplateWithOutcomeAndOutput(errorOutcome,arrayFindError));
-                                           
-                                           }});
-                   });
+                                          error: function(arrayFindError) {
+                                            response.error(logTemplateWithOutcomeAndOutput(errorOutcome,arrayFindError));
+
+                                          }});
+});
 
 Parse.Cloud.job('runSearchForMoviesWithTitle', function(request, status) {
                 // call the cloud function searchForMoviesWithTitle passing on the request data
@@ -143,25 +143,25 @@ Parse.Cloud.job('runSearchForMoviesWithTitle', function(request, status) {
                                                                     // the response must be turned to a string as the success method returns the object passed as the argument
                                                                     status.success(response.toString());
                                                                     
-                                                                    },
+                                                                  },
                                                                     // if the cloud function fails...
                                                                     function(error){
-                                                                    
+
                                                                     // the response is wrapped in an Parse.Error so the string for the console log must be extracted using the message property
                                                                     var message = error.code.toString() + " : " + error.message;
                                                                     
                                                                     if (error.code == Parse.Error.VALIDATION_ERROR)
                                                                     {
-                                                                    message += " == Parse.Error.VALIDATION_ERROR";
+                                                                      message += " == Parse.Error.VALIDATION_ERROR";
                                                                     }
                                                                     else if (error.code == Parse.Error.SCRIPT_FAILED)
                                                                     {
-                                                                    message += " == Parse.Error.SCRIPT_FAILED";
+                                                                      message += " == Parse.Error.SCRIPT_FAILED";
                                                                     //
-                                                                    }
-                                                                    
-                                                                    status.error(message);
-                                                                    
-                                                                    });
-                
-                });
+                                                                  }
+
+                                                                  status.error(message);
+
+                                                                });
+
+});
