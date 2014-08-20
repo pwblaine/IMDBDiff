@@ -89,34 +89,36 @@ Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
 
 Parse.Cloud.define('searchForMoviesWithTitle', function(request, response) {
                    // imdbId to get
+
+                   //Execute an http request (get, post [for creating and updating], delete)
                    var movieTitle = "The Matrix"; // = request.params.movieTitle;
                    Parse.Cloud.httpRequest({
                                            method: 'GET',
                                            url: "http://www.omdbapi.com/?s="+movieTitle+"&y=",
                                            success: function(movieAPIRequest) {
                                            
-                                           if (movieAPIRequest) {
-                                           var movies = [];
-                                           movies = eval('('+movieAPIRequest.text+')');
+                                            var movies = [];
+                                            movies = eval('('+movieAPIRequest.text+')');
                                            
-                                           var index = 0;
+                                            var index = 0;
                                            
-                                           for (var aMovie in movies)
-                                           {
-                                                var Movie = Parse.Object.extend("Movie"); // class declaration
-                                                aMovie = new Movie(aMovie);
-                                                movies.push(aMovie);
-                                           }
+                                            for (var aMovie in movies)
+                                            {
+                                              var Movie = Parse.Object.extend("Movie"); // class declaration
+                                              aMovie = new Movie(aMovie);
+                                              movies.push(aMovie);
+                                            }
                                            
-                                           if (movies)
-                                           
-                                           response.success("searchForMoviesWithTitle succeeded with output : |" + querystring.stringify(movies) + "| for request: " + request.body);
-                                           
-                                           } else {
+                                            if (movies) 
+                                            {
+                                              response.success("searchForMoviesWithTitle succeeded with output : |" + querystring.stringify(movies) + "| for request: " + request.body);
+                                            }, 
+
+                                           error(error): {
                                            
                                            response.error("searchForMoviesWithTitle failed for request: "+request.body);
                                            
-                                           }}});
+                                           }});
                    
                    });
 
