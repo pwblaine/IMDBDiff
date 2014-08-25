@@ -15,7 +15,8 @@ Parse.Cloud.job('testAllCloudCodeAPIMethods', function(request, status) {
                 var methodsToRun = [
                                     'getActorByImdbId',
                                     'getMovieByImdbId',
-                                    'searchMoviesByTitle'
+                                    'searchMoviesByTitle',
+                                    'getMovieByTitle'
                                     ];
                 
                 var paramsForMethods = {
