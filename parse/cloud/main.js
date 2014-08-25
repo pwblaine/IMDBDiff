@@ -210,29 +210,34 @@ Parse.Cloud.job('compareMovies', function(request, status) {
                 var queryForMoviesInRequest = new Parse.Query(MovieModel);
                 queryForMoviesInRequest.containedIn(request.params.movies);
                 
-                var sameKeysQuery = Parse.Query(MovieModel);
-                var diffKeysQuery = Parse.Query(MovieModel);
+                var sameKeysQuery = new Parse.Query(MovieModel);
+                var diffKeysQuery = new Parse.Query(MovieModel);
                 
-                var same = Parse.Collection.extend(MovieModel);
-                var diff = Parse.Collection.extend(MovieModel);
+                var same = new Parse.Collection.extend(MovieModel);
+                var diff = new Parse.Collection.extend(MovieModel);
                 
-                var movie1 = new MovieModel();
-                //status.success(JSON.stringify(Parse.Cloud.run('getMovieByTitle',request.params.movies[0]).then(function(object){return object})));
-                var movie2 = new MovieModel();
-                var response2 = Parse.Cloud.run('getMovieByTitle',request.params.movies[1]).then(function(object){return object});
-                
-                movie2.set();
+                var movie1 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]});
+                var movie2 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]});
                 
                 // test that key every key is contained in every movie in the parameters
                 
-                
-                for (var movie in request.params.movies.length)
+                for (var movie in request.params.movies)
                 {
-                    status.message = "| test for " + movie.get("Title");
+                    status.message("| test for " + movie);
                 }
-                var test = Parse.Promise.when(response2).then(function(response2){return this.resolve("test");});
-                status.success(JSON.stringify(test));
-                //status.success(request.params.movies.length + " movies entered for comparison, similar keys: " + JSON.stringify(movie1) + " different keys: " + JSON.stringify(movie2));
+                
+                Parse.Promise.when(movie1,movie2,Parse.Promise.as(sameKeysQuery)).then(function(movie1,movie2,sameKeysQuery){
+                                                                   
+                                                                   sameKeysQuery.notEqualTo("objectId",movie1["objectId"]);
+                                                       
+                                                                   for (var key in movie1)
+                                                                   {
+                                                                   sameKeysQuery.equalTo(key,movie1.get(key));
+                                                                   }
+
+                                                                                       (
+                                                                                       status.success(request.params.movies.length + " movies entered for comparison, similar keys: " + "(" +") " + JSON.stringify(movie1) + " different keys: " + JSON.stringify(movie2));});
+                                                                                       
             });
 
 
@@ -246,7 +251,7 @@ Parse.Cloud.define('getMovieByTitle', function(request, response)
                    titleQuery.count({
                                      success:function(count){
                                      if (count > 0){
-                                     titleQuery.first({success:function(theDBObject){response.success("Movie title already in db, object: "+theDBObject.id);},
+                                    titleQuery.first({success:function(theDBObject){response.success(theDBObject);},
                                                        error:function(error){response.error("getMovieByTitle failed with error: | code: "+error.code+" | message: "+error.message+"| for request: " + request.body);}});
                                      } else {
                                      
