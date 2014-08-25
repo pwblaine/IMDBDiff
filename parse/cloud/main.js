@@ -12,47 +12,9 @@ var querystring = require('querystring'); // stringifys json
 Parse.Cloud.job('testAllCloudCodeAPIMethods', function(request, status) {
                 // call the cloud function getActorByImdbId passing on the request data
                 
-                var methodsToRun = [
-                                    'getActorByImdbId',
-                                    'getMovieByImdbId',
-                                    'searchMoviesByTitle',
-                                    'getMovieByTitle'
-                                    ];
+                var methodsToRun = request.params.methodToRun;
                 
-                var paramsForMethods = {
-                
-                'getActorByImdbId' :
-                {
-                idName:"nm0000148",
-                format:"JSON",
-                filmography:1,
-                lang:"en-us",
-                bornDied:1,
-                starSign:1,
-                uniqueName:1,
-                actorActress:1,
-                actorTrivia:1
-                },
-                
-                'getMovieByImdbId' :
-                {
-                i:"tt1285016",
-                t:""
-                },
-                
-                'getMovieByTitle' :
-                {
-                i:"The Social Network",
-                t:""
-                },
-                
-                'searchMoviesByTitle' :
-                {
-                s:"The Matrix",
-                y:""
-                }
-                
-                };
+                var paramsForMethods = request.params.paramsForMethods;
                 
                 var methodResults = {};
                 var failedMethods = [];
@@ -65,9 +27,8 @@ Parse.Cloud.job('testAllCloudCodeAPIMethods', function(request, status) {
                                                                   paramsForMethods[methodToRun]).then(
                                                                                                       // if the result is success...
                                                                                                       function(response){
-                                                                                                      methodResults[methodToRun] = response; // store the response in methodResults
                                                                                                       // the response must be turned to a string as the success method returns the object passed as the argument
-                                                                                                      console.log(methodToRun + " succeeded for request with params "+JSON.stringify(request.params));
+                                                                                                      status.message(methodToRun + " succeeded for request with params "+JSON.stringify(paramsForMethods[methodToRun]));
                                                                                                       },
                                                                                                       // if the cloud function fails...
                                                                                                       function(error){
@@ -87,7 +48,7 @@ Parse.Cloud.job('testAllCloudCodeAPIMethods', function(request, status) {
                                                                                                       //
                                                                                                       }
                                                                                                       
-                                                                                                      console.log(methodToRun + " failed with error: " + message);
+                                                                                                      status.message(methodToRun + " failed with error: " + message);
                                                                                                       
                                                                                                       })
                                                   )
@@ -100,7 +61,8 @@ Parse.Cloud.job('testAllCloudCodeAPIMethods', function(request, status) {
                 }
                 
                 executeWhenPromisesAreDone(methodTestingPromises).then(function() {
-                                                                       status.success("all were successful");
+                                                                       var theMessage = "all were successful";
+                                                                       status.success(theMessage + " " + methodTestingPromises.toString());
                                                                    },
                                                                        function() {
                                                                        status.error("check the logs, some methods failed");
@@ -240,6 +202,40 @@ Parse.Cloud.define('getMovieByImdbId', function(request, response)
                    
                    });
 
+Parse.Cloud.job('compareMovies', function(request, status) {
+                
+                var MovieModel = Parse.Object.extend("Movie");
+                
+                var queryForAllMovies = new Parse.Query(MovieModel);
+                var queryForMoviesInRequest = new Parse.Query(MovieModel);
+                queryForMoviesInRequest.containedIn(request.params.movies);
+                
+                var sameKeysQuery = Parse.Query(MovieModel);
+                var diffKeysQuery = Parse.Query(MovieModel);
+                
+                var same = Parse.Collection.extend(MovieModel);
+                var diff = Parse.Collection.extend(MovieModel);
+                
+                var movie1 = new MovieModel();
+                //status.success(JSON.stringify(Parse.Cloud.run('getMovieByTitle',request.params.movies[0]).then(function(object){return object})));
+                var movie2 = new MovieModel();
+                var response2 = Parse.Cloud.run('getMovieByTitle',request.params.movies[1]).then(function(object){return object});
+                
+                movie2.set();
+                
+                // test that key every key is contained in every movie in the parameters
+                
+                
+                for (var movie in request.params.movies.length)
+                {
+                    status.message = "| test for " + movie.get("Title");
+                }
+                var test = Parse.Promise.when(response2).then(function(response2){return this.resolve("test");});
+                status.success(JSON.stringify(test));
+                //status.success(request.params.movies.length + " movies entered for comparison, similar keys: " + JSON.stringify(movie1) + " different keys: " + JSON.stringify(movie2));
+            });
+
+
 Parse.Cloud.define('getMovieByTitle', function(request, response)
                    {
                    // imdbId to get
@@ -276,7 +272,7 @@ Parse.Cloud.define('getMovieByTitle', function(request, response)
                                                                                                console.log("failed to remove a key from object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
                                                                                                }); // drop the Response key from the model so that now only applicable data is stored
                                                                      parseObjectForMovie.save().then(function(parseObjectForMovie) {
-                                                                                                     response.success(parseObjectForMovie.toJSON());
+                                                                                                     response.success(parseObjectForMovie);
                                                                                                      },
                                                                                                      function(error){
                                                                                                      response.error("failed to save object "+parseObjectForMovie.id+" with error: | code: "+error.code+" | message: "+error.message+" |");
@@ -396,6 +392,7 @@ Parse.Cloud.define('searchMoviesByTitle', function(request, response)
                                                                                                              // for every movie in the search save to the Movie table
                                                                                                              var parseObjectForMovie = new Movie();
                                                                                                              parseObjectForMovie.set(movie);
+                                                                                                             parseObjectForMovie.unset("Type");
                                                                                                              parseObjectForMovie.save().then(function(savedMovie){
                                                                                                                                              console.log("movie saved with id: "+savedMovie.id)},function(error){"failed to save movie "+savedMovie.id+" with error: | code: "+error.code+" | message: "+error.message+" |"});
                                                                                                              });
