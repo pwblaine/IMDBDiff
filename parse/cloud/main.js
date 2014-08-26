@@ -210,33 +210,26 @@ Parse.Cloud.job('compareMovies', function(request, status) {
                 var queryForMoviesInRequest = new Parse.Query(MovieModel);
                 queryForMoviesInRequest.containedIn(request.params.movies);
                 
-                var sameKeysQuery = new Parse.Query(MovieModel);
-                var diffKeysQuery = new Parse.Query(MovieModel);
-                
-                var same = new Parse.Collection.extend(MovieModel);
-                var diff = new Parse.Collection.extend(MovieModel);
-                
                 var movie1 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]});
                 var movie2 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]});
                 
-                // test that key every key is contained in every movie in the parameters
-                for (var movie in request.params.movies)
-                {
-                    status.message("| test for " + movie);
-                }
-                
-                Parse.Promise.when(movie1,movie2,Parse.Promise.as(sameKeysQuery)).then(function(movie1,movie2,sameKeysQuery){
-                                                                   
+                Parse.Promise.when(movie1,movie2).then(function(movie1,movie2){
+                                                       
+                                                       var MovieModel = Parse.Object.extend("Movie");
+                                                       var sameKeysQuery = new Parse.Query(MovieModel);
+                                                       
                                                                    sameKeysQuery.notEqualTo("objectId",movie1["objectId"]);
                                                        
                                                                    for (var key in movie1)
                                                                    {
-                                                                   sameKeysQuery.equalTo(key,movie1.get(key));
+                                                                   sameKeysQuery.equalTo(key,movie1[key]);
                                                                    }
 
-                                                                                       (
-                                                                                       status.success(request.params.movies.length + " movies entered for comparison, similar keys: " + "(" +") " + JSON.stringify(movie1) + " different keys: " + JSON.stringify(movie2));});
-                                                                                       
+                                                       sameKeysQuery.find().then(function(results){
+                                                                                 status.success("success sameKeysQuery.find() " + results);
+                                                                                                       },function(error){status.error("error sameKeysQuery.find() " + error);});
+
+                                                                                                    },function(error){status.error("error Parse.Promise.when(movie1,movie2) " + error);});
             });
 
 
