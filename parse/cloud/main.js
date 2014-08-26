@@ -220,7 +220,6 @@ Parse.Cloud.job('compareMovies', function(request, status) {
                 var movie2 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]});
                 
                 // test that key every key is contained in every movie in the parameters
-                
                 for (var movie in request.params.movies)
                 {
                     status.message("| test for " + movie);
