@@ -213,6 +213,7 @@ Parse.Cloud.job('compareMovies', function(request, status) {
                 var movie1 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]});
                 var movie2 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]});
                 
+
                 Parse.Promise.when(movie1,movie2).then(function(movie1,movie2){
                                                        
                                                        var MovieModel = Parse.Object.extend("Movie");
@@ -225,11 +226,14 @@ Parse.Cloud.job('compareMovies', function(request, status) {
                                                                    sameKeysQuery.equalTo(key,movie1[key]);
                                                                    }
 
-                                                       sameKeysQuery.find().then(function(results){
+                                                       status.success("test");
+                                                     },function(error){status.error("err");});//.then(function(sameKeysQueryResult){status.success(sameKeysQueryResult)},function(error){status.error(error);});
+                                                       /*.then(function(results){
                                                                                  status.success("success sameKeysQuery.find() " + results);
                                                                                                        },function(error){status.error("error sameKeysQuery.find() " + error);});
 
                                                                                                     },function(error){status.error("error Parse.Promise.when(movie1,movie2) " + error);});
+            */
             });
 
 
