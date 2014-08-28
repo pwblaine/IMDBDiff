@@ -226,15 +226,17 @@ Parse.Cloud.job('compareMovies', function(request, status) {
                                                                    sameKeysQuery.equalTo(key,movie1[key]);
                                                                    }
 
-                                                       status.success("test");
-                                                     },function(error){status.error("err");});//.then(function(sameKeysQueryResult){status.success(sameKeysQueryResult)},function(error){status.error(error);});
+                                                       status.success((typeof("test")).toString());
+                                                     },function(error){
+                                                       status.error((typeof(error)).toString());
+                                                       });
+                });//.then(function(sameKeysQueryResult){status.success(sameKeysQueryResult)},function(error){status.error(error);});
                                                        /*.then(function(results){
                                                                                  status.success("success sameKeysQuery.find() " + results);
                                                                                                        },function(error){status.error("error sameKeysQuery.find() " + error);});
 
                                                                                                     },function(error){status.error("error Parse.Promise.when(movie1,movie2) " + error);});
             */
-            });
 
 
 Parse.Cloud.define('getMovieByTitle', function(request, response)
