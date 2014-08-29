@@ -149,12 +149,12 @@ Parse.Cloud.define('getMovieByImdbId', function(request, response)
                    // imdbId to get
                    var imdbId = request.params.i; // = tt1285016 (The Social Network) for testing purposes
                    
-                   var imdbIdQuery = new Parse.Query("Movie");
-                   imdbIdQuery.contains("imdbID",imdbId);
+                   var imdbIdQuery = new Parse.Query(Parse.Object.extend("Movie"));
+                   imdbIdQuery.equalTo("imdbID",imdbId);
                    imdbIdQuery.count({
                                      success:function(count){
                                      if (count > 0){
-                                     imdbIdQuery.first({success:function(theDBObject){response.success("Movie imdbId already in db, object: "+theDBObject.id);},
+                                     imdbIdQuery.first({success:function(theDBObject){response.success(theDBObject.toJSON());},
                                                         error:function(error){response.error("getMovieByImdbId failed with error: | code: "+error.code+" | message: "+error.message+"| for request: " + request.body);}});
                                      } else {
                                      
@@ -202,39 +202,81 @@ Parse.Cloud.define('getMovieByImdbId', function(request, response)
                    
                    });
 
-Parse.Cloud.job('compareMovies', function(request, status) {
+Parse.Cloud.define('compareMovies', function(request, response) {
+//Parse.Cloud.define('compareMovies', function(request, response) {
                 
-                var MovieModel = Parse.Object.extend("Movie");
-                
-                var queryForAllMovies = new Parse.Query(MovieModel);
-                var queryForMoviesInRequest = new Parse.Query(MovieModel);
-                queryForMoviesInRequest.containedIn(request.params.movies);
-                
-                var movie1 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]});
-                var movie2 = Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]});
-                
+                Parse.Promise.when(Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]}),Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]})).then(function(movie1,movie2){
 
-                Parse.Promise.when(movie1,movie2).then(function(movie1,movie2){
-                                                       
-                                                       var MovieModel = Parse.Object.extend("Movie");
-                                                       var sameKeysQuery = new Parse.Query(MovieModel);
-                                                       
-                                                                   sameKeysQuery.notEqualTo("objectId",movie1["objectId"]);
-                                                       
+                                                                   var SameModel = Parse.Object.extend("CompareMoviesResult");
+                                                                   var sameObject = new SameModel();
+                                                                   var MovieModel = Parse.Object.extend("Movie");
+                                                                   var movie1Pointer = new MovieModel();
+                                                                   movie1Pointer.id = movie1["objectId"];
+                                                                   var movie2Pointer = new MovieModel();
+                                                                   movie2Pointer.id = movie2["objectId"];
+
+                                                       var compareMoviesResultQuery = new Parse.Query(Parse.Object.extend("CompareMoviesResult"));
+
+                                                       compareMoviesResultQuery.containedIn("movie1",[movie1Pointer,movie2Pointer]);
+                                                       compareMoviesResultQuery.containedIn("movie2",[movie1Pointer,movie2Pointer]);
+
+                                                       return compareMoviesResultQuery.first();
+                                                     }).then(function(compareMoviesResult){
+                                                      console.log("query has been done before... objectId "+compareMoviesResult.id);
+                                                        return compareMoviesResult;
+                                                       },function(error){
+                                                        console.log("query failed or is a new comparison with error "+error.message);
+                                                       var sameKeys = [];
+
                                                                    for (var key in movie1)
                                                                    {
-                                                                   sameKeysQuery.equalTo(key,movie1[key]);
+                                                                     if (movie1[key] === movie2[key])
+                                                                     {
+                                                                      sameKeys.push(key);
+                                                                     }
                                                                    }
 
-                                                       status.success("test");
-                                                     },function(error){status.error("err");});//.then(function(sameKeysQueryResult){status.success(sameKeysQueryResult)},function(error){status.error(error);});
-                                                       /*.then(function(results){
-                                                                                 status.success("success sameKeysQuery.find() " + results);
-                                                                                                       },function(error){status.error("error sameKeysQuery.find() " + error);});
 
-                                                                                                    },function(error){status.error("error Parse.Promise.when(movie1,movie2) " + error);});
-            */
-            });
+                                                                   return sameObject.save({"movie1":movie1Pointer,"movie2":movie2Pointer,"sameKeys":sameKeys},{success:function(obj){console.log("Results for compareMovies("+movie1["objectId"]+","+movie2["objectId"]+") save as object "+sameObject.id);return obj;},error:function(obj,error){response.error(error.message);return error;}});
+                                                      }).then(function(sameObject){
+                                                      console.log(JSON.stringify(sameObject));
+                                                      response.success(sameObject.toJSON());
+                                                     },function(error) {
+                                                      response.error(error.message);
+                                                     });
+
+});
+
+Parse.Cloud.job('runCompareMovies', function(request, status) {
+//Parse.Cloud.define('compareMovies', function(request, response) {
+                 Parse.Cloud.run('compareMovies',request.params).then(
+                                                                        // if the result is success...
+                                                                        function(response){
+                                                                        // the response must be turned to a string as the success method returns the object passed as the argument
+                                                                        status.success("compareMovies succeeded for request with params "+JSON.stringify(request.params) + "with output: " + JSON.stringify(response));
+                                                                        
+                                                                        },
+                                                                        // if the cloud function fails...
+                                                                        function(error){
+                                                                        
+                                                                        // the response is wrapped in an Parse.Error so the string for the console log must be extracted using the message property
+                                                                        var message = error.code + " : " + error.message;
+                                                                        
+                                                                        if (error.code == Parse.Error.VALIDATION_ERROR)
+                                                                        {
+                                                                        message += " == Parse.Error.VALIDATION_ERROR";
+                                                                        }
+                                                                        else if (error.code == Parse.Error.SCRIPT_FAILED)
+                                                                        {
+                                                                        message += " == Parse.Error.SCRIPT_FAILED";
+                                                                        //
+                                                                        }
+                                                                        
+                                                                        status.error(message);
+                                                                        
+                                                                        });
+
+});
 
 
 Parse.Cloud.define('getMovieByTitle', function(request, response)
@@ -242,12 +284,12 @@ Parse.Cloud.define('getMovieByTitle', function(request, response)
                    // imdbId to get
                    var title = request.params.t; // = tt1285016 (The Social Network) for testing purposes
                    
-                   var titleQuery = new Parse.Query("Movie");
-                   titleQuery.contains("Title",title);
+                   var titleQuery = new Parse.Query(Parse.Object.extend("Movie"));
+                   titleQuery.equalTo("Title",title);
                    titleQuery.count({
                                      success:function(count){
                                      if (count > 0){
-                                    titleQuery.first({success:function(theDBObject){response.success(theDBObject);},
+                                    titleQuery.first({success:function(theDBObject){response.success(theDBObject.toJSON());},
                                                        error:function(error){response.error("getMovieByTitle failed with error: | code: "+error.code+" | message: "+error.message+"| for request: " + request.body);}});
                                      } else {
                                      
@@ -273,7 +315,7 @@ Parse.Cloud.define('getMovieByTitle', function(request, response)
                                                                                                console.log("failed to remove a key from object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
                                                                                                }); // drop the Response key from the model so that now only applicable data is stored
                                                                      parseObjectForMovie.save().then(function(parseObjectForMovie) {
-                                                                                                     response.success(parseObjectForMovie);
+                                                                                                     response.success(parseObjectForMovie.toJSON());
                                                                                                      },
                                                                                                      function(error){
                                                                                                      response.error("failed to save object "+parseObjectForMovie.id+" with error: | code: "+error.code+" | message: "+error.message+" |");
