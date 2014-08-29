@@ -236,7 +236,6 @@ Parse.Cloud.define('compareMovies', function(request, response) {
                                                                      }
                                                                    }
 
-<<<<<<< HEAD
 
                                                                    return sameObject.save({"movie1":movie1Pointer,"movie2":movie2Pointer,"sameKeys":sameKeys},{success:function(obj){console.log("Results for compareMovies("+movie1["objectId"]+","+movie2["objectId"]+") save as object "+sameObject.id);return obj;},error:function(obj,error){response.error(error.message);return error;}});
                                                       }).then(function(sameObject){
@@ -254,7 +253,7 @@ Parse.Cloud.job('runCompareMovies', function(request, status) {
                                                                         // if the result is success...
                                                                         function(response){
                                                                         // the response must be turned to a string as the success method returns the object passed as the argument
-                                                                        status.success("compareMovies succeeded for request with params "+JSON.stringify(request.params) + "with output: " + JSON.stringify(response));
+                                                                        status.success("compareMovies succeeded for request with params "+JSON.stringify(request.params) + " with output: " + JSON.stringify(response));
                                                                         
                                                                         },
                                                                         // if the cloud function fails...
@@ -278,19 +277,6 @@ Parse.Cloud.job('runCompareMovies', function(request, status) {
                                                                         });
 
 });
-=======
-                                                       status.success((typeof("test")).toString());
-                                                     },function(error){
-                                                       status.error((typeof(error)).toString());
-                                                       });
-                });//.then(function(sameKeysQueryResult){status.success(sameKeysQueryResult)},function(error){status.error(error);});
-                                                       /*.then(function(results){
-                                                                                 status.success("success sameKeysQuery.find() " + results);
-                                                                                                       },function(error){status.error("error sameKeysQuery.find() " + error);});
-
-                                                                                                    },function(error){status.error("error Parse.Promise.when(movie1,movie2) " + error);});
-            */
->>>>>>> FETCH_HEAD
 
 
 Parse.Cloud.define('getMovieByTitle', function(request, response)
