@@ -538,7 +538,7 @@ Parse.Cloud.run('getMovieByImdbId',request.params).then(
 // if the result is success...
 function(response){
 // the response must be turned to a string as the success method returns the object passed as the argument
-status.success("runGetMovieByImdbId succeeded for request with params "+JSON.stringify(request.params) + "with output: " + JSON.stringify(response.text));
+status.success("runGetMovieByImdbId succeeded for request with params "+JSON.stringify(request.params) + " with output: " + JSON.stringify(response));
 
 },
 // if the cloud function fails...
@@ -600,7 +600,7 @@ Parse.Cloud.run('searchMoviesByTitle',request.params).then(
 // if the result is success...
 function(response){
 // the response must be turned to a string as the success method returns the object passed as the argument
-status.success("runsearchMoviesByTitle succeeded for request with params "+JSON.stringify(request.params) + "with output: " + JSON.stringify(response.text));
+status.success("runsearchMoviesByTitle succeeded for request with params "+JSON.stringify(request.params) + " with output: " + JSON.stringify(response));
 },
 // if the cloud function fails...
 function(error){
