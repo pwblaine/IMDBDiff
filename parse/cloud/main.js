@@ -223,7 +223,7 @@ Parse.Cloud.define('compareMovies', function(request, response) {
                                                        return compareMoviesResultQuery.first();
                                                      }).then(function(compareMoviesResult){
                                                       console.log("query has been done before... objectId "+compareMoviesResult.id);
-                                                        return compareMoviesResult;
+                                                        return Parse.Promise.as(compareMoviesResult);
                                                        },function(error){
                                                         console.log("query failed or is a new comparison with error "+error.message);
                                                        var sameKeys = [];
