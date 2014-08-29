@@ -144,79 +144,6 @@ response.error(logTemplateWithOutcomeAndOutput(errorOutcome,arrayFindError));
 *  @Parse.Cloud.Functions
 */
 
-Parse.Cloud.define('getMovieByImdbId', function(request, response)
-{
-// imdbId to get
-var imdbId = request.params.i; // = tt1285016 (The Social Network) for testing purposes
-
-var imdbIdQuery = new Parse.Query(Parse.Object.extend("Movie"));
-imdbIdQuery.equalTo("imdbID",imdbId);
-imdbIdQuery.count({
-success:function(count){
-if (count > 0){
-imdbIdQuery.first({success:function(theDBObject){response.success(theDBObject.toJSON());},
-error:function(error){response.error("getMovieByImdbId failed with error: | code: "+error.code+" | message: "+error.message+"| for request: " + request.body);}});
-} else {
-
-Parse.Cloud.httpRequest({
-method: 'GET',
-url: "http://www.omdbapi.com/",
-headers: {
-'User-Agent': 'Parse.com Cloud Code'
-},
-params: request.params
-}).then(function(httpResponse) {
-var Movie = Parse.Object.extend("Movie");
-var parseObjectForMovie = new Movie();
-var parsedResponse = JSON.parse(httpResponse.text); // convert text/html retrieved from OMDb to application/json and store in an object
-
-for (var key in parsedResponse)
-{
-if (key == "Writer" | key == "Actors" | key == "Genre" | key == "Language" | key == "Country")
-{
-var value = parsedResponse[key];
-var splitValue = value.split(", ");
-console.log("found multiple parts in "+key+", splitting into "+key+" : "+splitValue);
-parsedResponse[key] = JSON.parse(JSON.stringify(splitValue));
-}
-}
-
-var stringified = JSON.stringify(parsedResponse);
-parsedResponse = JSON.parse(stringified);
-
-parseObjectForMovie.set(parsedResponse,
-{error: function(parseObjectForMovie, error){
-console.log("failed to set parsedResponse as attributes for object object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
-}); // save all attributes of parsedResponse on parseObjectForMovie
-parseObjectForMovie.unset("Type",{error: function(parseObjectForMovie, error){
-console.log("failed to remove a key from object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
-}); // drop the Type key from the model so not to confuse with Parse class
-parseObjectForMovie.unset("Response",{error: function(parseObjectForMovie, error){
-console.log("failed to remove a key from object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
-}); // drop the Response key from the model so that now only applicable data is stored
-parseObjectForMovie.save().then(function(parseObjectForMovie) {
-response.success(parseObjectForMovie.toJSON());
-},
-function(error){
-response.error("failed to save object "+parseObjectForMovie.id+" with error: | code: "+error.code+" | message: "+error.message+" |");
-});
-},
-function (error) {
-response.error("getMovieByImdbId failed with error: | code: "+error.code+" | message: "+error.message+" | for request: " + request.body);
-}
-);
-
-}
-},
-error:function(error){
-response.error("count query for Movie failed, error: "+error.code+" | "+error.message);
-}
-});
-
-
-
-});
-
 Parse.Cloud.define('compareMovies', function(request, response) {
 //Parse.Cloud.define('compareMovies', function(request, response) {
 
@@ -298,36 +225,88 @@ response.error(JSON.stringify(error));
 
 });
 
-Parse.Cloud.job('runCompareMovies', function(request, status) {
-//Parse.Cloud.define('compareMovies', function(request, response) {
-Parse.Cloud.run('compareMovies',request.params).then(
-// if the result is success...
-function(response){
-// the response must be turned to a string as the success method returns the object passed as the argument
-status.success("compareMovies succeeded for request with params "+JSON.stringify(request.params) + " with output: " + JSON.stringify(response));
+Parse.Cloud.define('getMovieByImdbId', function(request, response)
+{
+// imdbId to get
+var imdbId = request.params.i; // = tt1285016 (The Social Network) for testing purposes
 
+var imdbIdQuery = new Parse.Query(Parse.Object.extend("Movie"));
+imdbIdQuery.equalTo("imdbID",imdbId);
+imdbIdQuery.count({
+success:function(count){
+if (count > 0){
+imdbIdQuery.first({success:function(theDBObject){response.success(theDBObject.toJSON());},
+error:function(error){response.error("getMovieByImdbId failed with error: | code: "+error.code+" | message: "+error.message+"| for request: " + request.body);}});
+} else {
+
+Parse.Cloud.httpRequest({
+method: 'GET',
+url: "http://www.omdbapi.com/",
+headers: {
+'User-Agent': 'Parse.com Cloud Code'
 },
-// if the cloud function fails...
+params: request.params
+}).then(function(httpResponse) {
+var Movie = Parse.Object.extend("Movie");
+var parseObjectForMovie = new Movie();
+var parsedResponse = JSON.parse(httpResponse.text); // convert text/html retrieved from OMDb to application/json and store in an object
+
+for (var key in parsedResponse)
+{
+if (key == "Writer" | key == "Actors" | key == "Genre" | key == "Language" | key == "Country")
+{
+var value = parsedResponse[key];
+var splitValue = value.split(", ");
+console.log("found multiple parts in "+key+", splitting into "+key+" : "+splitValue);
+for (var i = 0; i < splitValue.length; i++)
+{
+  var innerSplit = (splitValue[i]).split(" (");
+if (innerSplit.length > 1)
+{
+  console.log("found role attached to person, parsing out "+innerSplit[0]+" from "+splitValue[i]);
+  splitValue[i] = innerSplit[0];
+}
+}
+parsedResponse[key] = JSON.parse(JSON.stringify(splitValue));
+}
+}
+
+var stringified = JSON.stringify(parsedResponse);
+parsedResponse = JSON.parse(stringified);
+
+parseObjectForMovie.set(parsedResponse,
+{error: function(parseObjectForMovie, error){
+console.log("failed to set parsedResponse as attributes for object object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
+}); // save all attributes of parsedResponse on parseObjectForMovie
+parseObjectForMovie.unset("Type",{error: function(parseObjectForMovie, error){
+console.log("failed to remove a key from object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
+}); // drop the Type key from the model so not to confuse with Parse class
+parseObjectForMovie.unset("Response",{error: function(parseObjectForMovie, error){
+console.log("failed to remove a key from object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
+}); // drop the Response key from the model so that now only applicable data is stored
+parseObjectForMovie.save().then(function(parseObjectForMovie) {
+response.success(parseObjectForMovie.toJSON());
+},
 function(error){
-
-// the response is wrapped in an Parse.Error so the string for the console log must be extracted using the message property
-var message = error.code + " : " + error.message;
-
-if (error.code == Parse.Error.VALIDATION_ERROR)
-{
-message += " == Parse.Error.VALIDATION_ERROR";
+response.error("failed to save object "+parseObjectForMovie.id+" with error: | code: "+error.code+" | message: "+error.message+" |");
+});
+},
+function (error) {
+response.error("getMovieByImdbId failed with error: | code: "+error.code+" | message: "+error.message+" | for request: " + request.body);
 }
-else if (error.code == Parse.Error.SCRIPT_FAILED)
-{
-message += " == Parse.Error.SCRIPT_FAILED";
-//
-}
+);
 
-status.error(message);
+}
+},
+error:function(error){
+response.error("count query for Movie failed, error: "+error.code+" | "+error.message);
+}
+});
+
+
 
 });
 
-});
 
 
 Parse.Cloud.define('getMovieByTitle', function(request, response)
@@ -363,6 +342,15 @@ if (key == "Writer" | key == "Actors" | key == "Genre" | key == "Language" | key
 var value = parsedResponse[key];
 var splitValue = value.split(", ");
 console.log("found multiple parts in "+key+", splitting into "+key+" : "+splitValue);
+for (var i = 0; i < splitValue.length; i++)
+{
+var innerSplit = (splitValue[i]).split(" (");
+if (innerSplit.length > 1)
+{
+  console.log("found role attached to person, parsing out "+innerSplit[0]+" from "+splitValue[i]);
+  splitValue[i] = innerSplit[0];
+}
+}
 parsedResponse[key] = JSON.parse(JSON.stringify(splitValue));
 }
 }
@@ -531,6 +519,36 @@ response.error("count query for Search failed, error: "+error.code+" | "+error.m
 *  @Parse.Cloud.Jobs
 */
 
+Parse.Cloud.job('runCompareMovies', function(request, status) {
+//Parse.Cloud.define('compareMovies', function(request, response) {
+Parse.Cloud.run('compareMovies',request.params).then(
+// if the result is success...
+function(response){
+// the response must be turned to a string as the success method returns the object passed as the argument
+status.success("compareMovies succeeded for request with params "+JSON.stringify(request.params) + " with output: " + JSON.stringify(response));
+
+},
+// if the cloud function fails...
+function(error){
+
+// the response is wrapped in an Parse.Error so the string for the console log must be extracted using the message property
+var message = error.code + " : " + error.message;
+
+if (error.code == Parse.Error.VALIDATION_ERROR)
+{
+message += " == Parse.Error.VALIDATION_ERROR";
+}
+else if (error.code == Parse.Error.SCRIPT_FAILED)
+{
+message += " == Parse.Error.SCRIPT_FAILED";
+//
+}
+
+status.error(message);
+
+});
+
+});
 
 Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
 // call the cloud function getMovieByImdbId passing on the request data
