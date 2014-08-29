@@ -169,6 +169,21 @@ params: request.params
 var Movie = Parse.Object.extend("Movie");
 var parseObjectForMovie = new Movie();
 var parsedResponse = JSON.parse(httpResponse.text); // convert text/html retrieved from OMDb to application/json and store in an object
+
+for (var key in parsedResponse)
+{
+if (key == "Writer" | key == "Actors" | key == "Genre" | key == "Language" | key == "Country")
+{
+var value = parsedResponse[key];
+var splitValue = value.split(", ");
+console.log("found multiple parts in "+key+", splitting into "+key+" : "+splitValue);
+parsedResponse[key] = JSON.parse(JSON.stringify(splitValue));
+}
+}
+
+var stringified = JSON.stringify(parsedResponse);
+parsedResponse = JSON.parse(stringified);
+
 parseObjectForMovie.set(parsedResponse,
 {error: function(parseObjectForMovie, error){
 console.log("failed to set parsedResponse as attributes for object object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
@@ -209,48 +224,71 @@ Parse.Promise.when(Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[
 
 var compareMoviesResultQuery = new Parse.Query(Parse.Object.extend("CompareMoviesResult"));
 
-compareMoviesResultQuery.containedIn("movie1",[movie1,movie2]);
-compareMoviesResultQuery.containedIn("movie2",[movie1,movie2]);
+var MovieModel = Parse.Object.extend("Movie");
+var movieQuery = new Parse.Query(MovieModel);
+aMovie = new MovieModel();
+aMovie.id = movie1["objectId"];
+anotherMovie = new MovieModel();
+anotherMovie.id = movie2["objectId"];
 
-return Parse.Promise.when(compareMoviesResultQuery.first(),Parse.Promise.as(movie1),Parse.Promise.as(movie2));
+compareMoviesResultQuery.containedIn("movie1",[aMovie,anotherMovie]);
+compareMoviesResultQuery.containedIn("movie2",[aMovie,anotherMovie]);
+
+return Parse.Promise.when(compareMoviesResultQuery.first(),movieQuery.get(aMovie.id),movieQuery.get(anotherMovie.id));
 }).then(function(compareMoviesResult,movie1,movie2){
-
-
-if (compareMoviesResult)
-{
-  return Parse.Promise.as(compareMoviesResult);
-}
-
-var sameKeys = [];
-
-for (var key in movie1)
-{
-if (movie1[key] === movie2[key])
-{
-sameKeys.push(key);
-} else if (movie1[key] instanceof Array)
-{
-for (var value in movie1[key])
-{
-if (movie1[key][value] === movie2[key][value])
-{
-sameKeys.push(movie1[key][value]);
-}
-}
-}
-}
-
 
 var SameModel = Parse.Object.extend("CompareMoviesResult");
 var sameObject = new SameModel();
 
+if (compareMoviesResult)
+{
+  if (compareMoviesResult.id)
+  {
+   console.log(JSON.stringify(compareMoviesResult.toJSON()));
+   sameObject.id = compareMoviesResult.id;
+   return sameObject.fetch();
+ }
+}
+
+var sameKeys = [];
+
+for (var key in movie1.toJSON())
+{
+
+  var innerArray = (movie1.toJSON())[key];
+  var otherInnerArray = (movie2.toJSON())[key];
+if (innerArray === otherInnerArray)
+{
+sameKeys.push(key);
+} else if (innerArray instanceof Array)
+{
+  console.log("array key found for "+JSON.stringify(innerArray));
+  for (var i=0; i < innerArray.length; i++)
+  {
+    for (var otherInnerArrayKey in otherInnerArray)
+    {
+      console.log("comparing "+innerArray[i]+" to "+otherInnerArray[otherInnerArrayKey]);
+    if (innerArray[i] === otherInnerArray[otherInnerArrayKey])
+    {
+      console.log(innerArray[i]+" === "+otherInnerArray[otherInnerArrayKey]);
+      if (sameKeys.indexOf(key) < 0)
+      {
+      sameKeys.push(key);
+    }
+    }
+  }
+  }
+}
+}
+
 var MovieModel = Parse.Object.extend("Movie");
 aMovie = new MovieModel();
-aMovie.set(movie1);
+aMovie.id = movie1.id;
 anotherMovie = new MovieModel();
-anotherMovie.set(movie2);
+anotherMovie.id = movie2.id;
 
-return sameObject.save({"movie1":aMovie,"movie2":anotherMovie,"sameKeys":sameKeys},{success:function(obj){console.log("Results for compareMovies("+JSON.stringify(obj)+") save as object "+obj.id);return obj;},error:function(obj,error){return Parse.Promise.error("couldnt save "+JSON.stringify(obj.toJSON())+error.message);}});
+return sameObject.save({"movie1":aMovie,"movie2":anotherMovie,"sameKeys":sameKeys});
+
 }).then(function(sameObject){
 console.log(JSON.stringify(sameObject));
 response.success(sameObject.toJSON());
@@ -344,10 +382,10 @@ parseObjectForMovie.unset("Response",{error: function(parseObjectForMovie, error
 console.log("failed to remove a key from object "+JSON.stringify(parseObjectForMovie.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
 }); // drop the Response key from the model so that now only applicable data is stored
 
-parseObjectForMovie.save().then(function(parseObjectForMovie) {
-response.success(parseObjectForMovie.toJSON());
+parseObjectForMovie.save().then(function(theDBObject) {
+response.success(theDBObject.toJSON());
 },
-function(error){
+function(parseObjectForMovie, error){
 response.error("failed to save object "+parseObjectForMovie.id+" with error: | code: "+error.code+" | message: "+error.message+" |");
 });
 },
@@ -373,12 +411,12 @@ Parse.Cloud.define('getActorByImdbId', function(request, response)
 // imdbId to get
 var imdbId = request.params.idName; // = nm0000148 (Harrison Ford) for testing purposes, request.params.imdbId for production
 
-var imdbIdQuery = new Parse.Query("Staff");
-imdbIdQuery.contains("idIMDB",imdbId);
+var imdbIdQuery = new Parse.Query(Parse.Object.extend("Staff"));
+imdbIdQuery.equalTo("idIMDB",imdbId);
 imdbIdQuery.count({
 success:function(count){
 if (count > 0){
-imdbIdQuery.first({success:function(theDBObject){response.success("Staff imdbId already in db, object: "+theDBObject.id);},
+imdbIdQuery.first({success:function(theDBObject){response.success(theDBObject.toJSON());},
 error:function(error){response.error("getActorByImdbId failed with error: | code: "+error.code+" | message: "+error.message+"| for request: " + request.body);}});
 } else {
 
