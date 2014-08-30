@@ -252,17 +252,7 @@ getStatePath:function() {
    }
    return currentStatePath;
  },
- logState:function(){
-  if (this)
-  {
-    if (this.toJSON())
-    {
-  console.log("Logging state: "+JSON.stringify(this.toJSON()));
-  return Parse.Promise.as(JSON.stringify(this.toJSON()));
-    }
-  }
-  return Parse.Promise.error("could not parse into JSON");
- },
+ 
  previousState:function(){
 
    if (this.get('statePathIndex') > 0)
@@ -294,6 +284,7 @@ getStatePath:function() {
  },
 initialize:function(attrs,options){
                                         console.log(this.className);
+                                        console.log(this.defaults);
   /*if (this.toJSON())
   {
     options.success(Parse.Promise.as(this));
@@ -302,7 +293,18 @@ initialize:function(attrs,options){
     options.error(Parse.Promise.error(""+this.toString()))
   }*/
 }
-});
+                                        }
+                                        ,{logState:function(){
+                                        if (this)
+                                        {
+                                        if (this.toJSON())
+                                        {
+                                        console.log("Logging state: "+JSON.stringify(this.toJSON()));
+                                        return Parse.Promise.as(JSON.stringify(this.toJSON()));
+                                        }
+                                        }
+                                        return Parse.Promise.error("could not parse into JSON");
+                                        }});
 
 var state = new FunctionState;
 state.logState();
