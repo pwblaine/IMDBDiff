@@ -203,7 +203,7 @@ setDesiredState:function(stateName)
 
   return state;
 },
-makeNew:function(theName){
+/*makeNew:function(theName){
   var newState = null;
 if (!((this.get('states'))[theName]))
 {
@@ -218,17 +218,24 @@ options:{
   return Parse.Promise.as(newState);
   }
   return Parse.Promise.error("A state already exists with that name");
-},
+},*/
 proceedToState:function(stateName)
 {
+  var makeNew = function(theName){
+  var newState = null;
+newState = {
+  'name':theName,
+  'data':
+  {},
+options:{
+  success:function(obj){return Parse.Promise.as(obj);},
+  error:function(error){return Parse.Promise.error(JSON.stringify(error));}}
+};
+  return Parse.Promise.as(newState);
+  };
   var state = null;
   
-  if (this.get('hasEnded'))
-  {
-    state = function(obj){return Parse.Promise.error("This state listener has already been finalized");};
-  } else {
-  state =  function(stateNameString){return this.makeNew(stateNameString)};
-  }
+  state =  function(stateNameString){return makeNew(stateNameString)};
 
   return state(stateName).then(function(promise){return promise},function(error){return error;});
 },
@@ -271,15 +278,15 @@ getStatePath:function() {
  defaults:{
   name:"defaultName",
   blankState:{'name':null,'data':null,'options':null},
-  rootState:{'name':"initializing",'data':{'defaults':defaults},options:{success:function(obj){return Parse.Promise.as(obj);},error:function(error){return Parse.Promise.error(JSON.stringify(error));}}},
-  state:rootState,
+  rootState:{'name':"initializing",'data':{},options:{success:function(obj){return Parse.Promise.as(obj);},error:function(error){return Parse.Promise.error(JSON.stringify(error));}}},
+  state:{},
   desiredState:null,
   endState:null,
-  states:{'rootState':rootState,'desiredState':desiredState,'state':state,'endState':endState},
+  states:{'rootState':null,'desiredState':null,'state':null,'endState':null},
   hasEnded:false,
   success:function(obj){return state.options.success(obj);},
   error:function(error){return state.options.error(error);},
-  statePath:[rootState],
+  statePath:[],
   statePathIndex:0
  },
 initialize:function(attrs,options){
