@@ -293,6 +293,7 @@ getStatePath:function() {
   statePathIndex:0
  },
 initialize:function(attrs,options){
+                                        console.log(this.className);
   /*if (this.toJSON())
   {
     options.success(Parse.Promise.as(this));
@@ -308,7 +309,7 @@ state.logState();
 // we initialize in the compare movies request received state
 // in it we use the appropriate cloud functions (getMovieBy...) to get a JSON form of the movie from Parse or an httpRequest and move to the next state
 Parse.Promise.when(Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]}),Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]})).then(function(movie1,movie2){
-state.proceedToState("cacheChecking");
+// state.proceedToState("cacheChecking");
 // in the cache checking state, we convert the JSON responses from the cloud methods to Parse.Objects and query Parse for a prior comparison if it exists
 
 // set up the query to see if we've compared the movies before
