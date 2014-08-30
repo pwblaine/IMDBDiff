@@ -145,12 +145,167 @@ response.error(logTemplateWithOutcomeAndOutput(errorOutcome,arrayFindError));
 */
 
 Parse.Cloud.define('compareMovies', function(request, response) {
-//Parse.Cloud.define('compareMovies', function(request, response) {
+// every compare movies request comes in with either a title or an imdbID for the movie
+// TODO allow passing of imdbID as well as or instead of title, perhaps change params form to {"movies":[{"t":title,"i":imdbID}]}
 
+var FunctionState = Parse.Object.extend("State", {
+  // instance methods
+createState: function(stateName)
+{
+  if (!this.states)
+    {
+      var states = {stateName:stateName};
+      this.states = states;
+}
+  else if (!this["states"][stateName])
+  {
+  this["states"][stateName] = stateName;
+  }
+
+
+  return this["states"][stateName];
+},
+storeData:function(data)
+{
+  var dataKey = this.statePath[this.currentStatePathIndex]["data"];
+  if (dataKey && data && (dataKey instanceof Array)) {
+    dataKey.push(data);
+    } 
+    this.statePath[this.currentStatePathIndex]["data"] = dataKey;
+},
+end:function()
+{
+   this.endState = this.currentState;
+   this.hasEnded = true;
+},
+setDesiredState:function(stateName)
+{
+  var state = null;
+  
+  if (this.hasEnded)
+  {
+    return state;
+  }
+
+  if (!this.states.stateName)
+  {
+    this.createState(stateName);
+  } else {
+    state = this.states.stateName;
+  }
+
+  this.desiredState = state;
+
+  if (this.currentState === state)
+  {
+    this.end();
+  }
+
+  return state;
+},
+makeNew:function(theName){
+  var newState = null;
+if (!((this.get('states'))[theName]))
+{
+newState = {
+  'name':theName,
+  'data':
+  {},
+options:{
+  success:function(obj){return Parse.Promise.as(obj);},
+  error:function(error){return Parse.Promise.error(JSON.stringify(error));}}
+};
+  return Parse.Promise.as(newState);
+  }
+  return Parse.Promise.error("A state already exists with that name");
+},
+proceedToState:function(stateName)
+{
+  var state = null;
+  
+  if (this.get('hasEnded'))
+  {
+    state = function(obj){return Parse.Promise.error("This state listener has already been finalized");};
+  } else {
+  state =  function(stateNameString){return this.makeNew(stateNameString)};
+  }
+
+  return state(stateName).then(function(promise){return promise},function(error){return error;});
+},
+failToState:function(stateName,errorMessage)
+{
+  return Parse.Promise.error(errorMessage);
+},
+getStatePath:function() {
+   var currentStatePath = [];
+   for (var i = 0; i < this.get('statePathIndex'); i++)
+   {
+    currentStatePath.push((this.get('statePath'))[i]);
+   }
+   return currentStatePath;
+ },
+ logState:function(){
+  if (this)
+  {
+    if (this.toJSON())
+    {
+  console.log("Logging state: "+JSON.stringify(this.toJSON()));
+  return Parse.Promise.as(JSON.stringify(this.toJSON()));
+    }
+  }
+  return Parse.Promise.error("could not parse into JSON");
+ },
+ previousState:function(){
+
+   if (this.get('statePathIndex') > 0)
+    {
+      var previous = (this.get('statePath'))[this.get('statePathIndex') - 1];
+   
+      if (previous)
+      {
+      return Parse.Promise.as(previous);
+      }
+    }
+    return Parse.Promise.error("No previous state");
+ },
+ defaults:{
+  name:"defaultName",
+  blankState:{'name':null,'data':null,'options':null},
+  rootState:{'name':"initializing",'data':{'defaults':defaults},options:{success:function(obj){return Parse.Promise.as(obj);},error:function(error){return Parse.Promise.error(JSON.stringify(error));}}},
+  state:rootState,
+  desiredState:null,
+  endState:null,
+  states:{'rootState':rootState,'desiredState':desiredState,'state':state,'endState':endState},
+  hasEnded:false,
+  success:function(obj){return state.options.success(obj);},
+  error:function(error){return state.options.error(error);},
+  statePath:[rootState],
+  statePathIndex:0
+ },
+initialize:function(attrs,options){
+  /*if (this.toJSON())
+  {
+    options.success(Parse.Promise.as(this));
+  }
+  else{
+    options.error(Parse.Promise.error(""+this.toString()))
+  }*/
+}
+});
+
+var state = new FunctionState;
+state.logState();
+// we initialize in the compare movies request received state
+// in it we use the appropriate cloud functions (getMovieBy...) to get a JSON form of the movie from Parse or an httpRequest and move to the next state
 Parse.Promise.when(Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]}),Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]})).then(function(movie1,movie2){
+state.proceedToState("cacheChecking");
+// in the cache checking state, we convert the JSON responses from the cloud methods to Parse.Objects and query Parse for a prior comparison if it exists
 
-var compareMoviesResultQuery = new Parse.Query(Parse.Object.extend("CompareMoviesResult"));
+// set up the query to see if we've compared the movies before
+var compareMoviesResultModel = Parse.Object.extend("CompareMoviesResult");
+var compareMoviesResultQuery = new Parse.Query(compareMoviesResultModel);
 
+// and convert the JSON movie objects to their Parse.Object model counterparts
 var MovieModel = Parse.Object.extend("Movie");
 var movieQuery = new Parse.Query(MovieModel);
 aMovie = new MovieModel();
@@ -158,48 +313,56 @@ aMovie.id = movie1["objectId"];
 anotherMovie = new MovieModel();
 anotherMovie.id = movie2["objectId"];
 
+// restrict the query to look for the movies in question in either parameter
 compareMoviesResultQuery.containedIn("movie1",[aMovie,anotherMovie]);
 compareMoviesResultQuery.containedIn("movie2",[aMovie,anotherMovie]);
 
-return Parse.Promise.when(compareMoviesResultQuery.first(),movieQuery.get(aMovie.id),movieQuery.get(anotherMovie.id));
-}).then(function(compareMoviesResult,movie1,movie2){
-
-var SameModel = Parse.Object.extend("CompareMoviesResult");
-var sameObject = new SameModel();
-
-if (compareMoviesResult)
+// move to the next state passing promises that all models are now fetched: the query's count and results; and Parse.Object models for movie1 and movie2
+return Parse.Promise.when(compareMoviesResultQuery.count(),compareMoviesResultQuery.find(),aMovie.fetch(),anotherMovie.fetch());
+}).then(function(compareMoviesResultCount,compareMoviesResults,movie1,movie2){
+// in the query performed state, we should have all fetched models so we check count to see if the query turned up any results from Parse
+if (compareMoviesResultCount > 0)
 {
-  if (compareMoviesResult.id)
-  {
-   console.log(JSON.stringify(compareMoviesResult.toJSON()));
-   sameObject.id = compareMoviesResult.id;
-   return sameObject.fetch();
- }
+  // if the comparison has already been done, the query will have a count greater than 0, just return the result and move to comparison completed state
+   console.log("comparison done previously: "+JSON.stringify((compareMoviesResults[0]).toJSON()));
+   // our target object is always first in the array of results, make sure to fetch the full model for consistenc as queries don't resolve pointers
+   // this can also be accomplished by calling "(instanceof Parse.Query(ObjectModel)).include('pointerKey') or 'pointerKey.keyOfFieldOnPointer'"
+   return ((compareMoviesResults[0]).fetch());
+}
+else {
+  console.log("comparison not done previously, creating new...");
 }
 
+// create an array to hold any keys that turn out to be similar
 var sameKeys = [];
 
 for (var key in movie1.toJSON())
 {
-
+   // iterate over all the attributes by their keys
   var innerArray = (movie1.toJSON())[key];
   var otherInnerArray = (movie2.toJSON())[key];
 if (innerArray === otherInnerArray)
 {
+  // if the value is identical at a key push the key to the sameKeys array
 sameKeys.push(key);
 } else if (innerArray instanceof Array)
 {
+  // if the value isn't identical, check to see if it's an array value
   console.log("array key found for "+JSON.stringify(innerArray));
   for (var i=0; i < innerArray.length; i++)
   {
+    // for every value in both arrays...
     for (var otherInnerArrayKey in otherInnerArray)
     {
       console.log("comparing "+innerArray[i]+" to "+otherInnerArray[otherInnerArrayKey]);
+    // check if the values are identical
     if (innerArray[i] === otherInnerArray[otherInnerArrayKey])
     {
+      // if they are push the key that the array is stored at
       console.log(innerArray[i]+" === "+otherInnerArray[otherInnerArrayKey]);
       if (sameKeys.indexOf(key) < 0)
       {
+        /// but only if the key isn't already in the array
       sameKeys.push(key);
     }
     }
@@ -208,18 +371,20 @@ sameKeys.push(key);
 }
 }
 
-var MovieModel = Parse.Object.extend("Movie");
-aMovie = new MovieModel();
-aMovie.id = movie1.id;
-anotherMovie = new MovieModel();
-anotherMovie.id = movie2.id;
+// save the results of the comparison to Parse as a CompareMoviesResult object containing pointers to the movies compared and an array of same keys
 
-return sameObject.save({"movie1":aMovie,"movie2":anotherMovie,"sameKeys":sameKeys});
+var SameModel = Parse.Object.extend("CompareMoviesResult");
+var sameObject = new SameModel();
 
-}).then(function(sameObject){
-console.log(JSON.stringify(sameObject));
+return sameObject.save({"movie1":movie1,"movie2":movie2,"sameKeys":sameKeys});
+
+}).then(
+// in the comparison completed state, we return the filled out CompareMoviesResult object to the user or let the user know the process failed
+function(sameObject){
+// return the results in JSON form for portability
 response.success(sameObject.toJSON());
 },function(error) {
+  // or return the error if one occured
 response.error(JSON.stringify(error));
 });
 
