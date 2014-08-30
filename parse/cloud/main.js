@@ -149,7 +149,7 @@ Parse.Cloud.define('compareMovies', function(request, response) {
 // TODO allow passing of imdbID as well as or instead of title, perhaps change params form to {"movies":[{"t":title,"i":imdbID}]}
 
 var FunctionState = Parse.Object.extend({
-  // instance methods
+  // instance methods & properties
 /*
 createState: function(stateName)
 {
@@ -283,6 +283,7 @@ getStatePath:function() {
   statePathIndex:0
  },
 initialize:function(attrs,options){
+  // constructor
                                         console.log(this.className);
                                         console.log(this.defaults);
   /*if (this.toJSON())
@@ -292,10 +293,8 @@ initialize:function(attrs,options){
   else{
     options.error(Parse.Promise.error(""+this.toString()))
   }*/
-}
-                                        }
-                                        ,{
-                                        logState:function(){
+},
+'logState':function(){
                                         if (this)
                                         {
                                         if (this.toJSON())
@@ -305,7 +304,10 @@ initialize:function(attrs,options){
                                         }
                                         }
                                         return Parse.Promise.error("could not parse into JSON");
-                                        }});
+                                        },
+                                        },{
+                                          // class methods & properties
+                                      });
 
 var state = new FunctionState();
 state.logState();
