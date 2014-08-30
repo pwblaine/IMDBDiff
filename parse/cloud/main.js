@@ -148,8 +148,9 @@ Parse.Cloud.define('compareMovies', function(request, response) {
 // every compare movies request comes in with either a title or an imdbID for the movie
 // TODO allow passing of imdbID as well as or instead of title, perhaps change params form to {"movies":[{"t":title,"i":imdbID}]}
 
-var FunctionState = Parse.Object.extend("State", {
+var FunctionState = Parse.Object.extend({
   // instance methods
+/*
 createState: function(stateName)
 {
   if (!this.states)
@@ -203,7 +204,7 @@ setDesiredState:function(stateName)
 
   return state;
 },
-/*makeNew:function(theName){
+makeNew:function(theName){
   var newState = null;
 if (!((this.get('states'))[theName]))
 {
@@ -218,7 +219,7 @@ options:{
   return Parse.Promise.as(newState);
   }
   return Parse.Promise.error("A state already exists with that name");
-},*/
+},
 proceedToState:function(stateName)
 {
   var makeNew = function(theName){
@@ -274,8 +275,10 @@ getStatePath:function() {
       }
     }
     return Parse.Promise.error("No previous state");
- },
- defaults:{
+ },*/
+                                        
+                                        className:"State",
+ 'defaults':{
   name:"defaultName",
   blankState:{'name':null,'data':null,'options':null},
   rootState:{'name':"initializing",'data':{},options:{success:function(obj){return Parse.Promise.as(obj);},error:function(error){return Parse.Promise.error(JSON.stringify(error));}}},
