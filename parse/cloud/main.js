@@ -307,7 +307,7 @@ initialize:function(attrs,options){
                                         return Parse.Promise.error("could not parse into JSON");
                                         }});
 
-var state = new FunctionState;
+var state = new FunctionState();
 state.logState();
 // we initialize in the compare movies request received state
 // in it we use the appropriate cloud functions (getMovieBy...) to get a JSON form of the movie from Parse or an httpRequest and move to the next state
