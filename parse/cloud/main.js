@@ -294,7 +294,8 @@ initialize:function(attrs,options){
   }*/
 }
                                         }
-                                        ,{logState:function(){
+                                        ,{
+                                        logState:function(){
                                         if (this)
                                         {
                                         if (this.toJSON())
