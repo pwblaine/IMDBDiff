@@ -2,6 +2,47 @@ var _ = require("underscore.js");
 var Buffer = require('buffer').Buffer; // required for httpRequest
 var querystring = require('querystring'); // stringifys json
 
+var ParseErrorUtils = Parse.Object.extend(
+{className:'ParseErrorUtils',
+'semanticToString':function() {
+var codePairings = ParseErrorUtils.knownCodePairings[_.indexOf(ParseErrorUtils.knownModels,this.classModel)];
+var codes = _.values(codePairings);
+var codeKeys = _.keys(codePairings);
+return "[object Parse.Error."+codeKeys[_.indexOf(codes,this.code,true)]+"]";
+},initialize:function(attrs,options){
+  var codePairSample = _.pairs(options.codePairings)[0];
+  var neededParams = ['code'];
+  var codePairingsInterface = ((codePairSample[0] instanceof String) && (codePairSample[1] instanceof Number));
+  var instanceInterface = (_.intersection(neededParams,_.keys(new options.errorModel())) === neededParams);
+  var errorModelInterface = (instanceInterface && codePairingsInterface && ((new options.errorModel()) instanceof (typeof (new Parse.Error()))));
+  this.errorModel = Parse.Error;
+  this.codePairings = Parse.Error;
+  if (errorModelInterface)
+  {
+  this.errorModel = options.errorModel;
+  this.codePairings = options.codePairings;
+  }
+  if ((_.indexOf(ParseErrorUtils.knownModels,this.errorModel) === -1) && (_.indexOf(ParseErrorUtils.knownCodePairings,this.codePairings) === -1))
+  {
+  ParseErrorUtils.knownModels.push(this.errorModel);
+  ParseErrorUtils.knownCodePairings.push(this.codePairings);
+  }
+  var initializePromise = new Parse.Promise();
+  this.errorModel.prototype.classModel = this.errorModel;
+  var prototypeCallback = function(obj) {
+    var theModel = obj.errorModel;
+    return theModel.prototype.classModel;};
+  initializePromise.done(prototypeCallback);
+  return initializePromise.resolve(this);
+}},{'prototypeSemanticToString':function(errorModel,codePairings){
+  var errorUtility = new ParseErrorUtils({},{'errorModel':errorModel,'codePairings':codePairings});
+  var classModel = errorUtility.get('errorModel');
+  errorModel.prototype.toString = errorUtility['semanticToString'];
+  return errorModel.prototype.toString;
+},'knownModels':[],'knownCodePairings':[]});
+
+ParseErrorUtils.prototypeSemanticToString(Parse.Error,Parse.Error);
+
 /*
 *  @name Parse.Cloud.run('testAllCloudCodeAPIMethods')
 *  parameters will not be used, don't bother defining!
@@ -293,6 +334,7 @@ initialize:function(attrs,options){
   else{
     options.error(Parse.Promise.error(""+this.toString()))
   }*/
+  return this;
 },
 'logState':function(){
                                         if (this)
@@ -311,6 +353,7 @@ initialize:function(attrs,options){
 
 var state = new FunctionState();
 state.logState();
+console.log(""+(new Parse.Error(Parse.Error.VALIDATION_ERROR,"some message")));
 // we initialize in the compare movies request received state
 // in it we use the appropriate cloud functions (getMovieBy...) to get a JSON form of the movie from Parse or an httpRequest and move to the next state
 Parse.Promise.when(Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]}),Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]})).then(function(movie1,movie2){
