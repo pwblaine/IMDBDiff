@@ -1,56 +1,108 @@
 var _ = require("underscore.js");
-var Buffer = require('buffer').Buffer; // required for httpRequest
-var querystring = require('querystring'); // stringifys json
+var Buffer = require("buffer").Buffer; // required for httpRequest
+var querystring = require("querystring"); // stringifys json
 
-var ParseErrorUtils = Parse.Object.extend(
-{className:'ParseErrorUtils',
-'semanticToString':function() {
-var codePairings = ParseErrorUtils.knownCodePairings[_.indexOf(ParseErrorUtils.knownModels,this.classModel)];
-var codes = _.values(codePairings);
-var codeKeys = _.keys(codePairings);
-return "[object Parse.Error."+codeKeys[_.indexOf(codes,this.code,true)]+"]";
-},initialize:function(attrs,options){
-  var codePairSample = _.pairs(options.codePairings)[0];
-  var neededParams = ['code'];
-  var codePairingsInterface = ((codePairSample[0] instanceof String) && (codePairSample[1] instanceof Number));
-  var instanceInterface = (_.intersection(neededParams,_.keys(new options.errorModel())) === neededParams);
-  var errorModelInterface = (instanceInterface && codePairingsInterface && ((new options.errorModel()) instanceof (typeof (new Parse.Error()))));
-  this.errorModel = Parse.Error;
-  this.codePairings = Parse.Error;
-  if (errorModelInterface)
+Parse.Cloud.define("getParseErrorUtils",function (request,response) {
+
+var ParseErrorUtilsInstanceModel = {
+initialize:function(attrs,options){
+
+  if (ParseErrorUtils.fulfillsInterface(options))
   {
   this.errorModel = options.errorModel;
   this.codePairings = options.codePairings;
+  } else {
+    this.errorModel = ParseErrorUtils.defaultErrorModel;
+    this.codeParings = ParseErrorUtils.defaultCodePairings;
   }
-  if ((_.indexOf(ParseErrorUtils.knownModels,this.errorModel) === -1) && (_.indexOf(ParseErrorUtils.knownCodePairings,this.codePairings) === -1))
+  var setDefaultModelAndCodePairing = function(errorModel,codePairings) {ParseErrorUtils.defaultModel = errorModel;ParseErrorUtils.defaultCodePairings;};
+  this.setAndSaveModel();
+},
+className:"ParseErrorUtils",
+setAndSaveModel:function()
+{
+  this.set("errorModel",this.errorModel);
+  this.set("codePairings",this.codePairings);
+  //this.save().then(function(obj){console.log("object saved! "+obj.id); return obj;},function(error){return error;});
+},
+codePairedTypeToString:function() {
+var codePairings = this.defaultCodePairings;
+var codes = _.values(codePairings);
+var codeKeys = _.keys(codePairings);
+return "[object "+codeKeys[_.indexOf(codes,this.code,true)]+"]";
+}
+};
+
+var ParseErrorUtilsClassModel = {
+defaultErrorModel:Parse.Error,
+defaultCodePairings:Parse.Error,
+knownModels:[Parse.Error],
+knownCodePairings:[Parse.Error],
+addToErrorLibrary:function(errorModel,codePairings) {
+  if ((_.indexOf(ParseErrorUtils.knownModels,errorModel) === -1) && (_.indexOf(ParseErrorUtils.knownCodePairings,codePairings) === -1))
   {
-  ParseErrorUtils.knownModels.push(this.errorModel);
-  ParseErrorUtils.knownCodePairings.push(this.codePairings);
+  ParseErrorUtils.knownModels.push(errorModel);
+  ParseErrorUtils.knownCodePairings.push(codePairings);
   }
-  var initializePromise = new Parse.Promise();
-  this.errorModel.prototype.classModel = this.errorModel;
-  var prototypeCallback = function(obj) {
-    var theModel = obj.errorModel;
-    return theModel.prototype.classModel;};
-  initializePromise.done(prototypeCallback);
-  return initializePromise.resolve(this);
-}},{'prototypeSemanticToString':function(errorModel,codePairings){
-  var errorUtility = new ParseErrorUtils({},{'errorModel':errorModel,'codePairings':codePairings});
-  var classModel = errorUtility.get('errorModel');
-  errorModel.prototype.toString = errorUtility['semanticToString'];
-  return errorModel.prototype.toString;
-},'knownModels':[],'knownCodePairings':[]});
+  },
+typeForCode:function(code,options) {
+var codePairings = _.has(options,"codePairings") ? options.codePairings : ParseErrorUtils.defaultCodePairings;
+var codes = _.values(codePairings);
+var codeKeys = _.keys(codePairings);
+return codeKeys[_.indexOf(codes,code,true)];
+},
+fulfillsCodePairingsInterface: function(codePairings)
+{
+  var codePairSample = (_.pairs(codePairings))[0];
+  var codePairingsInterface = ((codePairSample[0] instanceof String) && (codePairSample[1] instanceof Number));
+  return codePairingsInterface;
+},
+fulfillsErrorModelInterface: function(errorModel)
+{
+  var neededParams = ["code"];
+  var errorModelInterface = (_.intersection(neededParams,_.keys(new errorModel())) === neededParams);
+  return errorModelInterface;
+},
+fulfillsInterface:function(options){
+  var codePairingsInterface = false;
+  var errorModelInterface = false;
+  var ParseErrorUtilsInterface = false;
+if ((options) && (_.has(options,"codePairings")))
+{
+  codePairingsInterface = ParseErrorUtils.fulfillsCodePairingsInterface(options.codePairings);
+}
+if ((options) && (_.has(options,"errorModel")))
+{
+  errorModelInterface = ParseErrorUtils.fulfillsErrorModelInterface(options.errorModel);
+}
+if (codePairingsInterface && errorModelInterface)
+{
+ParseErrorUtilsInterface = true;
+}
+return ParseErrorUtilsInterface;
+}
+};
 
-ParseErrorUtils.prototypeSemanticToString(Parse.Error,Parse.Error);
+var ParseErrorUtils = Parse.Object.extend("ParseErrorUtils",ParseErrorUtilsInstanceModel,ParseErrorUtilsClassModel);
 
+ParseErrorUtils.prototype.toString = function(){return "[object ParseErrorUtils]";};
+
+var errorUtility = new ParseErrorUtils;
+
+console.log((new ParseErrorUtils).toString());
+
+errorUtility.save().then(function(obj){response.success(ParseErrorUtils);},function(error){response.error(error);});
+
+});
 /*
-*  @name Parse.Cloud.run('testAllCloudCodeAPIMethods')
-*  parameters will not be used, don't bother defining!
+*  @name Parse.Cloud.run("testAllCloudCodeAPIMethods")
+*  parameters will not be used, don"t bother defining!
 *
-*  @description 'testAllCloudCodeAPIMethods' uses predefined parameters from the paramsForMethods object to execute a series of methods
+*  @description "testAllCloudCodeAPIMethods" uses predefined parameters from the paramsForMethods object to execute a series of methods
 */
 
-Parse.Cloud.job('testAllCloudCodeAPIMethods', function(request, status) {
+
+Parse.Cloud.job("testAllCloudCodeAPIMethods", function(request, status) {
 // call the cloud function getActorByImdbId passing on the request data
 
 var methodsToRun = request.params.methodToRun;
@@ -113,15 +165,15 @@ status.error("check the logs, some methods failed");
 });
 
 /*
-*  @name Parse.Cloud.run('request',data,options)
+*  @name Parse.Cloud.run("request",data,options)
 *  data will be logged back to the user if a success
 *  options must be of type Parse.Cloud.HTTPOptions
 *  HTTPOptions -> https://parse.com/docs/js/symbols/Parse.Cloud.HTTPOptions.html
 *
-*  @description 'request' is just a simple test method to see if interacting with Cloud Code works
+*  @description "request" is just a simple test method to see if interacting with Cloud Code works
 */
 
-Parse.Cloud.define('request', function(request, response) {
+Parse.Cloud.define("request", function(request, response) {
 
 if (request) {
 
@@ -129,13 +181,13 @@ response.success(request);
 
 } else {
 
-response.error('unable to access the request data');
+response.error("unable to access the request data");
 
 }
 
 });
 
-Parse.Cloud.define('StateTrackingTest', function(request, response) {
+Parse.Cloud.define("StateTrackingTest", function(request, response) {
 //Execute an http request (get, post [for creating and updating], delete)
 var state = "requestMaking";
 var successOrFailureTemplate = function(outcome,output) {if (outcome == successOutcome) {return "succeeded with output: " + output} else if (outcome == errorOutcome) {return "failed with error: | code: "+output.code+" | message: "+output.message}};
@@ -148,12 +200,12 @@ const errorOutcome = "error";
 var movieTitle = "The Matrix"; // = request.params.movieTitle;
 
 Parse.Cloud.httpRequest({
-method: 'GET',
+method: "GET",
 url: "http://www.omdbapi.com/?s="+movieTitle+"&y=",
 headers: {
-'Accept': 'application/json',
-'User-Agent': 'Parse.com Cloud Code',
-'Content-Type': 'application/json'},
+"Accept": "application/json",
+"User-Agent": "Parse.com Cloud Code",
+"Content-Type": "application/json"},
 success: function(movieAPIRequest) {
 
 var movies = [];
@@ -185,11 +237,11 @@ response.error(logTemplateWithOutcomeAndOutput(errorOutcome,arrayFindError));
 *  @Parse.Cloud.Functions
 */
 
-Parse.Cloud.define('compareMovies', function(request, response) {
+Parse.Cloud.define("compareMovies", function(request, response) {
 // every compare movies request comes in with either a title or an imdbID for the movie
 // TODO allow passing of imdbID as well as or instead of title, perhaps change params form to {"movies":[{"t":title,"i":imdbID}]}
 
-var FunctionState = Parse.Object.extend({
+var FunctionState = Parse.Object.extend("State",{
   // instance methods & properties
 /*
 createState: function(stateName)
@@ -247,11 +299,11 @@ setDesiredState:function(stateName)
 },
 makeNew:function(theName){
   var newState = null;
-if (!((this.get('states'))[theName]))
+if (!((this.get("states"))[theName]))
 {
 newState = {
-  'name':theName,
-  'data':
+  "name":theName,
+  "data":
   {},
 options:{
   success:function(obj){return Parse.Promise.as(obj);},
@@ -266,8 +318,8 @@ proceedToState:function(stateName)
   var makeNew = function(theName){
   var newState = null;
 newState = {
-  'name':theName,
-  'data':
+  "name":theName,
+  "data":
   {},
 options:{
   success:function(obj){return Parse.Promise.as(obj);},
@@ -287,18 +339,18 @@ failToState:function(stateName,errorMessage)
 },
 getStatePath:function() {
    var currentStatePath = [];
-   for (var i = 0; i < this.get('statePathIndex'); i++)
+   for (var i = 0; i < this.get("statePathIndex"); i++)
    {
-    currentStatePath.push((this.get('statePath'))[i]);
+    currentStatePath.push((this.get("statePath"))[i]);
    }
    return currentStatePath;
  },
  
  previousState:function(){
 
-   if (this.get('statePathIndex') > 0)
+   if (this.get("statePathIndex") > 0)
     {
-      var previous = (this.get('statePath'))[this.get('statePathIndex') - 1];
+      var previous = (this.get("statePath"))[this.get("statePathIndex") - 1];
    
       if (previous)
       {
@@ -309,14 +361,14 @@ getStatePath:function() {
  },*/
                                         
                                         className:"State",
- 'defaults':{
+ defaults:{
   name:"defaultName",
-  blankState:{'name':null,'data':null,'options':null},
-  rootState:{'name':"initializing",'data':{},options:{success:function(obj){return Parse.Promise.as(obj);},error:function(error){return Parse.Promise.error(JSON.stringify(error));}}},
+  blankState:{"name":null,"data":null,"options":null},
+  rootState:{"name":"initializing","data":{},options:{success:function(obj){return Parse.Promise.as(obj);},error:function(error){return Parse.Promise.error(JSON.stringify(error));}}},
   state:{},
   desiredState:null,
   endState:null,
-  states:{'rootState':null,'desiredState':null,'state':null,'endState':null},
+  states:{"rootState":null,"desiredState":null,"state":null,"endState":null},
   hasEnded:false,
   success:function(obj){return state.options.success(obj);},
   error:function(error){return state.options.error(error);},
@@ -326,7 +378,7 @@ getStatePath:function() {
 initialize:function(attrs,options){
   // constructor
                                         console.log(this.className);
-                                        console.log(this.defaults);
+                                        console.log(JSON.stringify(this.defaults));
   /*if (this.toJSON())
   {
     options.success(Parse.Promise.as(this));
@@ -334,9 +386,8 @@ initialize:function(attrs,options){
   else{
     options.error(Parse.Promise.error(""+this.toString()))
   }*/
-  return this;
 },
-'logState':function(){
+logState:function(){
                                         if (this)
                                         {
                                         if (this.toJSON())
@@ -350,17 +401,28 @@ initialize:function(attrs,options){
                                         },{
                                           // class methods & properties
                                       });
+// @pragma mark testFunctionState
 
 var state = new FunctionState();
 state.logState();
-console.log(""+(new Parse.Error(Parse.Error.VALIDATION_ERROR,"some message")));
+
+// @pragma mark testParseErrorUtils
+
+/*Parse.Cloud.run("getParseErrorUtils").then(function(ParseErrorUtils){
+  var errorUtility = new ParseErrorUtils;
+var error = new Parse.Error(Parse.Error.VALIDATION_ERROR,"some message"); 
+console.log(ParseErrorUtils.typeForCode(error.code));
+});*/
+
+// @pragma mark compareMovies
+
 // we initialize in the compare movies request received state
 // in it we use the appropriate cloud functions (getMovieBy...) to get a JSON form of the movie from Parse or an httpRequest and move to the next state
-Parse.Promise.when(Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[0]}),Parse.Cloud.run('getMovieByTitle',{"t":request.params.movies[1]})).then(function(movie1,movie2){
+Parse.Promise.when(Parse.Cloud.run("getMovieByTitle",{"t":request.params.movies[0]}),Parse.Cloud.run("getMovieByTitle",{"t":request.params.movies[1]})).then(function(movie1,movie2){
 // state.proceedToState("cacheChecking");
 // in the cache checking state, we convert the JSON responses from the cloud methods to Parse.Objects and query Parse for a prior comparison if it exists
 
-// set up the query to see if we've compared the movies before
+// set up the query to see if we"ve compared the movies before
 var compareMoviesResultModel = Parse.Object.extend("CompareMoviesResult");
 var compareMoviesResultQuery = new Parse.Query(compareMoviesResultModel);
 
@@ -376,7 +438,7 @@ anotherMovie.id = movie2["objectId"];
 compareMoviesResultQuery.containedIn("movie1",[aMovie,anotherMovie]);
 compareMoviesResultQuery.containedIn("movie2",[aMovie,anotherMovie]);
 
-// move to the next state passing promises that all models are now fetched: the query's count and results; and Parse.Object models for movie1 and movie2
+// move to the next state passing promises that all models are now fetched: the query"s count and results; and Parse.Object models for movie1 and movie2
 return Parse.Promise.when(compareMoviesResultQuery.count(),compareMoviesResultQuery.find(),aMovie.fetch(),anotherMovie.fetch());
 }).then(function(compareMoviesResultCount,compareMoviesResults,movie1,movie2){
 // in the query performed state, we should have all fetched models so we check count to see if the query turned up any results from Parse
@@ -384,8 +446,8 @@ if (compareMoviesResultCount > 0)
 {
   // if the comparison has already been done, the query will have a count greater than 0, just return the result and move to comparison completed state
    console.log("comparison done previously: "+JSON.stringify((compareMoviesResults[0]).toJSON()));
-   // our target object is always first in the array of results, make sure to fetch the full model for consistenc as queries don't resolve pointers
-   // this can also be accomplished by calling "(instanceof Parse.Query(ObjectModel)).include('pointerKey') or 'pointerKey.keyOfFieldOnPointer'"
+   // our target object is always first in the array of results, make sure to fetch the full model for consistenc as queries don"t resolve pointers
+   // this can also be accomplished by calling "(instanceof Parse.Query(ObjectModel)).include("pointerKey") or "pointerKey.keyOfFieldOnPointer""
    return ((compareMoviesResults[0]).fetch());
 }
 else {
@@ -406,7 +468,7 @@ if (innerArray === otherInnerArray)
 sameKeys.push(key);
 } else if (innerArray instanceof Array)
 {
-  // if the value isn't identical, check to see if it's an array value
+  // if the value isn"t identical, check to see if it"s an array value
   console.log("array key found for "+JSON.stringify(innerArray));
   for (var i=0; i < innerArray.length; i++)
   {
@@ -421,7 +483,7 @@ sameKeys.push(key);
       console.log(innerArray[i]+" === "+otherInnerArray[otherInnerArrayKey]);
       if (sameKeys.indexOf(key) < 0)
       {
-        /// but only if the key isn't already in the array
+        /// but only if the key isn"t already in the array
       sameKeys.push(key);
     }
     }
@@ -449,7 +511,7 @@ response.error(JSON.stringify(error));
 
 });
 
-Parse.Cloud.define('getMovieByImdbId', function(request, response)
+Parse.Cloud.define("getMovieByImdbId", function(request, response)
 {
 // imdbId to get
 var imdbId = request.params.i; // = tt1285016 (The Social Network) for testing purposes
@@ -464,10 +526,10 @@ error:function(error){response.error("getMovieByImdbId failed with error: | code
 } else {
 
 Parse.Cloud.httpRequest({
-method: 'GET',
+method: "GET",
 url: "http://www.omdbapi.com/",
 headers: {
-'User-Agent': 'Parse.com Cloud Code'
+"User-Agent": "Parse.com Cloud Code"
 },
 params: request.params
 }).then(function(httpResponse) {
@@ -533,7 +595,7 @@ response.error("count query for Movie failed, error: "+error.code+" | "+error.me
 
 
 
-Parse.Cloud.define('getMovieByTitle', function(request, response)
+Parse.Cloud.define("getMovieByTitle", function(request, response)
 {
 // imdbId to get
 var title = request.params.t; // = tt1285016 (The Social Network) for testing purposes
@@ -548,10 +610,10 @@ error:function(error){response.error("getMovieByTitle failed with error: | code:
 } else {
 
 Parse.Cloud.httpRequest({
-method: 'GET',
+method: "GET",
 url: "http://www.omdbapi.com/",
 headers: {
-'User-Agent': 'Parse.com Cloud Code'
+"User-Agent": "Parse.com Cloud Code"
 },
 params: request.params
 }).then(function(httpResponse) {
@@ -617,7 +679,7 @@ response.error("count query for Movie failed, error: "+error.code+" | "+error.me
 
 });
 
-Parse.Cloud.define('getActorByImdbId', function(request, response)
+Parse.Cloud.define("getActorByImdbId", function(request, response)
 {
 // ex url : "http://www.myapifilms.com/imdb?idName="+imdId+"&format=JSON&filmography=1&lang=en-us&bornDied=1&starSign=1&uniqueName=1&actorActress=1&actorTrivia=1"
 // imdbId to get
@@ -633,10 +695,10 @@ error:function(error){response.error("getActorByImdbId failed with error: | code
 } else {
 
 Parse.Cloud.httpRequest({
-method: 'GET',
+method: "GET",
 url: "http://www.myapifilms.com/imdb",
 headers: {
-'User-Agent': 'Parse.com Cloud Code'
+"User-Agent": "Parse.com Cloud Code"
 },
 params: request.params
 }).then(function(httpResponse) {
@@ -672,7 +734,7 @@ response.error("count query for Staff failed, error: "+error.code+" | "+error.me
 
 });
 
-Parse.Cloud.define('searchMoviesByTitle', function(request, response)
+Parse.Cloud.define("searchMoviesByTitle", function(request, response)
 {
 // api always returns an array of movies in an object under a key of {"Search" : [movies]}
 // imdbId to get
@@ -689,17 +751,17 @@ imdbIdQuery.find({success:function(theDBObjects){
 // if movies exist in db containing the same title and year, stop and report their object ids
 var idString = "";
 _.each(theDBObjects,function(aMovie){idString += " " + aMovie.id + " |";});
-response.success(count+" movies with Title '" +title+ "' and Year '"+year+"' already in db, objects:"+idString);},
+response.success(count+" movies with Title " +title+ "and Year "+year+" already in db, objects:"+idString);},
 error:function(error){
 response.error("searchMoviesByTitle failed with error: | code: "+error.code+" | message: "+error.message+"| for request: " + request.body);}
 });
 } else {
 console.log("no movies matching title and year, querying");
 Parse.Cloud.httpRequest({
-method: 'GET',
+method: "GET",
 url: "http://www.omdbapi.com/",
 headers: {
-'User-Agent': 'Parse.com Cloud Code'
+"User-Agent": "Parse.com Cloud Code"
 },
 params: request.params
 }).then(function(httpResponse) {
@@ -743,9 +805,9 @@ response.error("count query for Search failed, error: "+error.code+" | "+error.m
 *  @Parse.Cloud.Jobs
 */
 
-Parse.Cloud.job('runCompareMovies', function(request, status) {
-//Parse.Cloud.define('compareMovies', function(request, response) {
-Parse.Cloud.run('compareMovies',request.params).then(
+Parse.Cloud.job("runCompareMovies", function(request, status) {
+//Parse.Cloud.define("compareMovies", function(request, response) {
+Parse.Cloud.run("compareMovies",request.params).then(
 // if the result is success...
 function(response){
 // the response must be turned to a string as the success method returns the object passed as the argument
@@ -774,9 +836,9 @@ status.error(message);
 
 });
 
-Parse.Cloud.job('runGetMovieByImdbId', function(request, status) {
+Parse.Cloud.job("runGetMovieByImdbId", function(request, status) {
 // call the cloud function getMovieByImdbId passing on the request data
-Parse.Cloud.run('getMovieByImdbId',request.params).then(
+Parse.Cloud.run("getMovieByImdbId",request.params).then(
 // if the result is success...
 function(response){
 // the response must be turned to a string as the success method returns the object passed as the argument
@@ -805,9 +867,9 @@ status.error(message);
 
 });
 
-Parse.Cloud.job('runGetActorByImdbId', function(request, status) {
+Parse.Cloud.job("runGetActorByImdbId", function(request, status) {
 // call the cloud function getActorByImdbId passing on the request data
-Parse.Cloud.run('getActorByImdbId',request.params).then(
+Parse.Cloud.run("getActorByImdbId",request.params).then(
 // if the result is success...
 function(response){
 // the response must be turned to a string as the success method returns the object passed as the argument
@@ -836,9 +898,9 @@ status.error(message);
 
 });
 
-Parse.Cloud.job('runSearchMoviesByTitle', function(request, status) {
+Parse.Cloud.job("runSearchMoviesByTitle", function(request, status) {
 // call the cloud function getActorByImdbId passing on the request data
-Parse.Cloud.run('searchMoviesByTitle',request.params).then(
+Parse.Cloud.run("searchMoviesByTitle",request.params).then(
 // if the result is success...
 function(response){
 // the response must be turned to a string as the success method returns the object passed as the argument
