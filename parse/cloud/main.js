@@ -232,13 +232,53 @@ Parse.Cloud.job('compareMovies', function(request, status) {
                                                        
                                                                    for (var key in movie1)
                                                                    {
-                                                                   sameKeysQuery.equalTo(key,movie1.get(key));
+                                                                   sameKeysQuery.equalTo(key,movie2.get(key));
                                                                    }
 
+                                                                   //Test for different keys..
+                                                                   /*
+                                                                   for (var key in movie1)
+                                                                   {
+                                                                   sameKeysQuery.notEqualTo(key,movie2.get(key));
+                                                                   }
+                                                                    */
                                                                                        (
                                                                                        status.success(request.params.movies.length + " movies entered for comparison, similar keys: " + "(" +") " + JSON.stringify(movie1) + " different keys: " + JSON.stringify(movie2));});
-                                                                                       
+                                                                  
+
             });
+
+
+Parse.Cloud.job('testCompareMovies', function(request, status) {
+
+                  Parse.Cloud.run('compareMovies',request.params).then(
+                                                                 // if the result is success...
+                                                                 function(response){
+                                                                 // the response must be turned to a string as the success method returns the object passed as the argument
+                                                                 status.success("testCompareMovies succeeded for request with params "+JSON.stringify(request.params) + "with output: " + JSON.stringify(response.text));
+                                                                 
+                                                                 },
+                                                                 // if the cloud function fails...
+                                                                 function(error){
+                                                                 
+                                                                 // the response is wrapped in an Parse.Error so the string for the console log must be extracted using the message property
+                                                                 var message = error.code + " : " + error.message;
+                                                                 
+                                                                 if (error.code == Parse.Error.VALIDATION_ERROR)
+                                                                 {
+                                                                 message += " == Parse.Error.VALIDATION_ERROR";
+                                                                 }
+                                                                 else if (error.code == Parse.Error.SCRIPT_FAILED)
+                                                                 {
+                                                                 message += " == Parse.Error.SCRIPT_FAILED";
+                                                                 //
+                                                                 }
+                                                                 
+                                                                 status.error(message);
+                                                                 
+                                                                 });                
+
+});
 
 
 Parse.Cloud.define('getMovieByTitle', function(request, response)
