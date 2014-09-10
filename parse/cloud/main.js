@@ -569,6 +569,7 @@ var year = request.params.y;
 var imdbIdQuery = new Parse.Query("Movie");
 imdbIdQuery.contains("Title_LOWERCASE",title.toLowerCase());
 imdbIdQuery.contains("Year",year);
+imdbIdQuery.select("Title","Year","Director","imdbRating");
 imdbIdQuery.count({success:function(count){
 if ((count > 0) && !request.params.skipDB) {
 imdbIdQuery.find({success:function(theDBObjects){
@@ -602,13 +603,14 @@ var Movie = Parse.Object.extend("Movie");
 var promises = new Parse.Promise.as();
 var results = [];
 _.each(parsedResponse["Search"],function(movie) {
-// for every movie in the search save to the Movie table
+// for every movie in the search cache and save to the Movie table in out db
     promises = promises.then(function(){
       return Parse.Cloud.run("getMovieByImdbId",{"i":movie["imdbID"]}).then(function(movieObj){results.push(movieObj);return results;})
   });
 });
 
 Parse.Promise.when(promises).then(function () {
+  // output a short version to the user
   var movies = [];
   var imdbIDs = [];
   for (var args in arguments[0])
@@ -624,7 +626,7 @@ Parse.Promise.when(promises).then(function () {
 var Movie = Parse.Object.extend("Movie");
   var movieQuery = new Parse.Query(Movie);
   movieQuery.containedIn("imdbID",imdbIDs);
-  movieQuery.select("Title","Year","Director");
+  movieQuery.select("Title","Year","Director","imdbRating");
   movieQuery.find().then(function(results){
     console.log("movieQuery results: "+JSON.stringify(results));
 var Search = Parse.Object.extend("Search");
