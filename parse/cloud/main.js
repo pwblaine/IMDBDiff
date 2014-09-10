@@ -567,21 +567,27 @@ var title = request.params.s; // = The Matrix for testing purposes
 var year = request.params.y;
 
 var imdbIdQuery = new Parse.Query("Movie");
-imdbIdQuery.contains("Title",title);
+imdbIdQuery.contains("Title_LOWERCASE",title.toLowerCase());
 imdbIdQuery.contains("Year",year);
-imdbIdQuery.count({
-success:function(count){
-if (count > 0){
+imdbIdQuery.count({success:function(count){
+if ((count > 0) && !request.params.skipDB) {
 imdbIdQuery.find({success:function(theDBObjects){
 // if movies exist in db containing the same title and year, stop and report their object ids
 var idString = "";
 _.each(theDBObjects,function(aMovie){idString += " " + aMovie.id + " |";});
-response.success(count+" movies with Title " +title+ "and Year "+year+" already in db, objects:"+idString);},
+console.log(count+" movies with Title \"" +title+ "\" and Year \""+year+"\" already in db, objects:"+idString);
+response.success(theDBObjects);},
 error:function(error){
 response.error("searchMoviesByTitle failed with error: | code: "+error.code+" | message: "+error.message+"| for request: " + request.body);}
 });
 } else {
+  if (request.params.skipDB)
+  {
+    console.log("skipDB flagged");
+  } else
+  {
 console.log("no movies matching title and year, querying");
+}
 Parse.Cloud.httpRequest({
 method: "GET",
 url: "http://www.omdbapi.com/",
@@ -590,39 +596,51 @@ headers: {
 },
 params: request.params
 }).then(function(httpResponse) {
+var parsedResponse = JSON.parse(httpResponse.text); // convert text/html retrieved from OMDb to application/json and store in an object
+
+var Movie = Parse.Object.extend("Movie");
+var promises = new Parse.Promise.as();
+var results = [];
+_.each(parsedResponse["Search"],function(movie) {
+// for every movie in the search save to the Movie table
+    promises = promises.then(function(){
+      return Parse.Cloud.run("getMovieByImdbId",{"i":movie["imdbID"]}).then(function(movieObj){results.push(movieObj);return results;})
+  });
+});
+
+Parse.Promise.when(promises).then(function () {
+  var movies = [];
+  var imdbIDs = [];
+  for (var args in arguments[0])
+  {
+    movies.push(arguments[0][args]);
+  }
+
+  for (var index in movies)
+  {
+    imdbIDs.push(movies[index]["imdbID"]);
+  }
+
+var Movie = Parse.Object.extend("Movie");
+  var movieQuery = new Parse.Query(Movie);
+  movieQuery.containedIn("imdbID",imdbIDs);
+  movieQuery.select("Title","Year","Director");
+  movieQuery.find().then(function(results){
+    console.log("movieQuery results: "+JSON.stringify(results));
 var Search = Parse.Object.extend("Search");
 var parseObjectForSearch = new Search();
-var parsedResponse = JSON.parse(httpResponse.text); // convert text/html retrieved from OMDb to application/json and store in an object
-parseObjectForSearch.set(parsedResponse,
-{error: function(parseObjectForSearch, error){
-console.log("failed to set parsedResponse as attributes for object object "+JSON.stringify(parseObjectForSearch.toJSON())+" with error: | code: "+error.code+" | message: "+error.message+" |");}
-}); // save all attributes of parsedResponse on parseObjectForSearch
-var Movie = Parse.Object.extend("Movie");
-_.each(parseObjectForSearch.get("Search"),function(movie) {
-// for every movie in the search save to the Movie table
-var parseObjectForMovie = new Movie();
-parseObjectForMovie.set(movie);
-parseObjectForMovie.unset("Type");
-parseObjectForMovie.save().then(function(savedMovie){
-console.log("movie saved with id: "+savedMovie.id)},function(error){"failed to save movie "+savedMovie.id+" with error: | code: "+error.code+" | message: "+error.message+" |"});
+  parseObjectForSearch.set(results);
+  response.success(parseObjectForSearch.toJSON());
+}, function(error){response.error();});
 });
-response.success(parseObjectForSearch.toJSON());
 
-},
-function (error) {
-// httpRequest error
-response.error("getSearchByImdbId failed with error: | code: "+error.code+" | message: "+error.message+" | for request: " + request.body);
-}
-);
+}, function(error){response.error();});
 
-}
+} // end api request code
 },
 error:function(error){
 response.error("count query for Search failed, error: "+error.code+" | "+error.message);
-}
-});
-
-
+}});
 
 });
 
@@ -726,6 +744,36 @@ status.error(message);
 Parse.Cloud.job("runSearchMoviesByTitle", function(request, status) {
 // call the cloud function getActorByImdbId passing on the request data
 Parse.Cloud.run("searchMoviesByTitle",request.params).then(
+// if the result is success...
+function(response){
+// the response must be turned to a string as the success method returns the object passed as the argument
+status.success("runsearchMoviesByTitle succeeded for request with params "+JSON.stringify(request.params) + " with output: " + JSON.stringify(response));
+},
+// if the cloud function fails...
+function(error){
+
+// the response is wrapped in an Parse.Error so the string for the console log must be extracted using the message property
+var message = error.code + " : " + error.message;
+
+if (error.code == Parse.Error.VALIDATION_ERROR)
+{
+message += " == Parse.Error.VALIDATION_ERROR";
+}
+else if (error.code == Parse.Error.SCRIPT_FAILED)
+{
+message += " == Parse.Error.SCRIPT_FAILED";
+//
+}
+
+status.error(message);
+
+});
+
+});
+
+Parse.Cloud.job("runSearchMoviesByTitleAndSkipDB", function(request, status) {
+// call the cloud function getActorByImdbId passing on the request data
+Parse.Cloud.run("searchMoviesByTitle",{"s":request.params.s,"y":request.params.y,"skipDB":true}).then(
 // if the result is success...
 function(response){
 // the response must be turned to a string as the success method returns the object passed as the argument
